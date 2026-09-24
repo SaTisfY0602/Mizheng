@@ -1,0 +1,35 @@
+# Python and local tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+.env
+.env.*
+
+# Local application state and generated outputs
+data/
+results/
+runs/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+dist/
+build/
+
+# Secrets and imported evidence; synthetic public fixtures may be added deliberately later
+*.key
+*.p12
+*.pfx
+*.pem
+*.der
+
+# Local review and reference copies outside the shared implementation baseline
+/.codex-doc-review/
+/参考/
+/历届获奖作品参考/
+/*.docx
+/*.zip
