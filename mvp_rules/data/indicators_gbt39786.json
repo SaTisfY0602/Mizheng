@@ -1,0 +1,1299 @@
+{
+  "meta": {
+    "id": "RP-CRYPTO-ASSESS",
+    "version": "0.3.0-mvp",
+    "supersedes": [
+      "demo-0.2.0"
+    ],
+    "schema": "mvp-rules-1",
+    "description": "标准指标目录：GB/T 39786-2021 附录 A 表 A.1 的指标项、分级要求与自动核查覆盖情况",
+    "created_at": "2026-09-28T00:00:00Z",
+    "structure_note": "GB/T 39786-2021 的**正文章号按密码应用等级划分**：第 6 章第一级、第 7 章第二级、第 8 章第三级、第 9 章第四级、第 10 章第五级；每级下 8 个子节（.1 物理和环境安全、.2 网络和通信安全、.3 设备和计算安全、.4 应用和数据安全、.5 管理制度、.6 人员管理、.7 建设运行、.8 应急处置）。密钥管理不是正文独立章，体现在附录 B「密钥生存周期管理」与各指标的密码服务/密码产品要求里。",
+    "indicator_source": "指标项名称与分级取值取自**附录 A（资料性）表 A.1「第一级—第四级密码应用基本要求汇总列表」**。该表用「可／宜／应」标注各级强度：可=可选、宜=推荐、应=必须、空白=该级不要求。",
+    "clause_convention": "clause 指向该指标在**第三级**（第 8 章）的条款；level_clauses 记录各级条款与强度。例如网络和通信安全的身份鉴别：二级 7.2 a) 宜、三级 8.2 a) 应、四级 9.2 a) 应。",
+    "verification_note": "全部条款号与分级取值均通过把标准 PDF 渲染成图片后逐页阅读核实（pdftotext 提取不到文本层，但 pdftoppm -r 170 渲染正常）。第 8 章正文见 PDF 第 11—14 页，附录 A 表 A.1 见第 16—17 页。"
+  },
+  "indicators": [
+    {
+      "indicator_id": "PHY-IDENTITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.1 a)",
+      "title": "物理访问控制的身份鉴别",
+      "domain": "物理和环境安全",
+      "levels": [
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "2": "7.1 a) 宜",
+        "3": "8.1 a) 应",
+        "4": "9.1 a) 应"
+      },
+      "assessment_object": "机房出入口门禁系统",
+      "required_materials": [
+        "门禁系统密码应用说明",
+        "门禁设备配置"
+      ],
+      "check_method": "自动核查证书有效性与强度；人工核查门禁是否使用密码技术实现身份鉴别",
+      "automated_rule_ids": [],
+      "note": "当前工具输入只覆盖 Nginx 配置与 X.509 证书，门禁类证据未接入。"
+    },
+    {
+      "indicator_id": "PHY-ACCESS-RECORD-INTEGRITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.1 b)",
+      "title": "电子门禁记录数据存储完整性",
+      "domain": "物理和环境安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.1 a) 可",
+        "2": "7.1 c) 可",
+        "3": "8.1 b) 宜",
+        "4": "9.1 b) 应"
+      },
+      "assessment_object": "机房出入口门禁记录",
+      "required_materials": [
+        "门禁记录完整性保护说明"
+      ],
+      "check_method": "人工核查出入记录的完整性保护机制",
+      "automated_rule_ids": [],
+      "note": "物理类证据未接入。"
+    },
+    {
+      "indicator_id": "PHY-VIDEO-INTEGRITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.1 c)",
+      "title": "视频监控记录数据存储完整性",
+      "domain": "物理和环境安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.1 b) 宜",
+        "2": "7.1 b) 宜",
+        "3": "8.1 c) 宜",
+        "4": "9.1 c) 应"
+      },
+      "assessment_object": "机房视频监控系统",
+      "required_materials": [
+        "视频监控完整性保护说明"
+      ],
+      "check_method": "人工核查视频记录的完整性保护机制",
+      "automated_rule_ids": [],
+      "note": "视频类证据未接入。"
+    },
+    {
+      "indicator_id": "PHY-CRYPTO-SERVICE",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.1 d)",
+      "title": "密码服务（物理和环境安全）",
+      "domain": "物理和环境安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.1 c) 可",
+        "2": "7.1 d) 可",
+        "3": "8.1 d) 可",
+        "4": "9.1 d) 可"
+      },
+      "assessment_object": "采用的密码服务",
+      "required_materials": [
+        "密码服务资质证明",
+        "密码认证机构认证合格证明"
+      ],
+      "check_method": "人工核查密码服务是否符合法律法规、是否经专业机构认证合格",
+      "automated_rule_ids": [],
+      "note": "资质类材料未接入，无法自动核查。"
+    },
+    {
+      "indicator_id": "PHY-CRYPTO-PRODUCT",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.1 e)",
+      "title": "密码产品（物理和环境安全）",
+      "domain": "物理和环境安全",
+      "levels": [
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "2": "7.1 e) 二级及以上",
+        "3": "8.1 e) 二级及以上",
+        "4": "9.1 e) 三级及以上"
+      },
+      "assessment_object": "采用的密码产品",
+      "required_materials": [
+        "密码产品认证证书",
+        "GB/T 37092 安全等级证明"
+      ],
+      "check_method": "人工核查密码产品的 GB/T 37092 安全等级是否达标",
+      "automated_rule_ids": [],
+      "note": "GB/T 37092 要求二级及以上（四级要求三级及以上）；产品认证材料未接入。"
+    },
+    {
+      "indicator_id": "NET-COMM-IDENTITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.2 a)",
+      "title": "通信双方的身份鉴别",
+      "domain": "网络和通信安全",
+      "levels": [
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "2": "7.2 a) 宜",
+        "3": "8.2 a) 应",
+        "4": "9.2 a) 应（双向）"
+      },
+      "assessment_object": "通信链路两端设备/服务",
+      "required_materials": [
+        "服务端配置文件",
+        "服务端证书",
+        "证书链/信任材料"
+      ],
+      "check_method": "自动核查服务端是否配置证书、证书是否可信且与目标服务匹配、公钥是否满足强度要求、用途是否限定服务端鉴别；人工核查双向鉴别与密钥管理",
+      "automated_rule_ids": [
+        "RISK-CERT-SELF-SIGNED",
+        "RISK-CERT-UNTRUSTED-ISSUER",
+        "RISK-CERT-SAN-MISMATCH",
+        "RISK-CERT-EKU-NOT-SERVER-AUTH",
+        "RISK-BINDING-UNKNOWN"
+      ],
+      "note": "四级要求「双向身份鉴别」，当前只核查服务端一侧；预共享密钥与国密双证书关系（U10）未覆盖。"
+    },
+    {
+      "indicator_id": "NET-COMM-INTEGRITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.2 b)",
+      "title": "通信数据完整性",
+      "domain": "网络和通信安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.2 a) 可",
+        "2": "7.2 b) 可",
+        "3": "8.2 b) 应",
+        "4": "9.2 b) 应"
+      },
+      "assessment_object": "通信链路",
+      "required_materials": [
+        "服务端配置文件",
+        "握手流量"
+      ],
+      "check_method": "自动核查传输层协议版本是否提供完整性保护；人工核查实际协商结果",
+      "automated_rule_ids": [
+        "RISK-TLS-WEAK-PROTOCOL"
+      ],
+      "note": "当前只能从配置推断允许的协议，尚未解析真实握手流量确认实际协商值。"
+    },
+    {
+      "indicator_id": "NET-COMM-CONFIDENTIALITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.2 c)",
+      "title": "通信过程中重要数据的机密性",
+      "domain": "网络和通信安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.2 b) 可",
+        "2": "7.2 c) 可",
+        "3": "8.2 c) 应",
+        "4": "9.2 c) 应"
+      },
+      "assessment_object": "通信链路",
+      "required_materials": [
+        "服务端配置文件",
+        "服务端证书"
+      ],
+      "check_method": "自动核查是否启用弱套件、是否使用过短密钥；人工确认重要数据范围",
+      "automated_rule_ids": [
+        "RISK-TLS-WEAK-CIPHER"
+      ],
+      "note": "二级为「可」，三级起为「应」。"
+    },
+    {
+      "indicator_id": "NET-COMM-ACCESS-CONTROL",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.2 d)",
+      "title": "网络边界访问控制信息的完整性",
+      "domain": "网络和通信安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.2 c) 可",
+        "2": "7.2 d) 宜",
+        "3": "8.2 d) 宜",
+        "4": "9.2 d) 宜"
+      },
+      "assessment_object": "网络边界设备",
+      "required_materials": [
+        "网络访问控制配置"
+      ],
+      "check_method": "人工核查访问控制信息的完整性保护",
+      "automated_rule_ids": [],
+      "note": "访问控制类证据未接入。"
+    },
+    {
+      "indicator_id": "NET-COMM-SECURE-ACCESS",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.2 e)",
+      "title": "安全接入认证",
+      "domain": "网络和通信安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.2 d) 可",
+        "2": "7.2 e) 可",
+        "3": "8.2 e) 宜",
+        "4": "9.2 e) 宜"
+      },
+      "assessment_object": "从外部连接到内部网络的设备",
+      "required_materials": [
+        "接入认证配置",
+        "接入设备证书"
+      ],
+      "check_method": "自动核查接入是否使用证书做身份鉴别；人工核查准入流程",
+      "automated_rule_ids": [],
+      "note": "准入类配置未接入。"
+    },
+    {
+      "indicator_id": "NET-COMM-CRYPTO-SERVICE",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.2 f)",
+      "title": "密码服务（网络和通信安全）",
+      "domain": "网络和通信安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.2 e) 可",
+        "2": "7.2 f) 可",
+        "3": "8.2 f) 可",
+        "4": "9.2 f) 可"
+      },
+      "assessment_object": "采用的密码服务",
+      "required_materials": [
+        "密码服务资质证明"
+      ],
+      "check_method": "人工核查密码服务资质",
+      "automated_rule_ids": [],
+      "note": "资质类材料未接入。"
+    },
+    {
+      "indicator_id": "NET-COMM-CRYPTO-PRODUCT",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.2 g)",
+      "title": "密码产品（网络和通信安全）",
+      "domain": "网络和通信安全",
+      "levels": [
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "2": "7.2 g) 二级及以上",
+        "3": "8.2 g) 二级及以上",
+        "4": "9.2 g) 三级及以上"
+      },
+      "assessment_object": "采用的密码产品",
+      "required_materials": [
+        "密码产品认证证书",
+        "GB/T 37092 安全等级证明"
+      ],
+      "check_method": "人工核查密码产品的 GB/T 37092 安全等级",
+      "automated_rule_ids": [],
+      "note": "产品认证材料未接入。"
+    },
+    {
+      "indicator_id": "DEV-IDENTITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.3 a)",
+      "title": "设备和计算安全的身份鉴别",
+      "domain": "设备和计算安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.3 a) 可",
+        "2": "7.3 a) 宜",
+        "3": "8.3 a) 应",
+        "4": "9.3 a) 应"
+      },
+      "assessment_object": "服务器、数据库、密码设备",
+      "required_materials": [
+        "设备证书",
+        "登录认证配置"
+      ],
+      "check_method": "自动核查设备证书的有效期、用途与密钥强度；人工核查登录鉴别机制",
+      "automated_rule_ids": [
+        "DEC-BIND-TIME",
+        "DEC-CERT-KEY-STRENGTH",
+        "DEC-CERT-KEY-USAGE",
+        "RISK-CERT-EXPIRED",
+        "RISK-CERT-EXPIRING",
+        "RISK-CERT-TIME-MISSING",
+        "RISK-CERT-TIME-UNPARSABLE",
+        "RISK-CERT-WEAK-SIGNATURE",
+        "RISK-CERT-SIGNATURE-UNKNOWN",
+        "RISK-CERT-NOT-YET-VALID",
+        "RISK-CERT-WEAK-KEY",
+        "RISK-CERT-PURPOSE-MISSING"
+      ],
+      "note": "设备清单与登录配置尚未接入。"
+    },
+    {
+      "indicator_id": "DEV-REMOTE-MGMT",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.3 b)",
+      "title": "远程管理通道安全",
+      "domain": "设备和计算安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.3 b) 可",
+        "2": "7.3 b) 可",
+        "3": "8.3 b) 应",
+        "4": "9.3 b) 应"
+      },
+      "assessment_object": "远程管理通道",
+      "required_materials": [
+        "远程管理配置",
+        "管理端证书"
+      ],
+      "check_method": "自动核查远程管理是否启用弱协议/弱套件；人工核查通道建立方式",
+      "automated_rule_ids": [],
+      "note": "本指标与已自动核查的同类指标证据同源，但每条规则只登记一个归属指标，故不在此重复声明。"
+    },
+    {
+      "indicator_id": "DEV-ACCESS-CONTROL",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.3 c)",
+      "title": "系统资源访问控制信息完整性",
+      "domain": "设备和计算安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.3 c) 宜",
+        "2": "7.3 c) 宜",
+        "3": "8.3 c) 宜",
+        "4": "9.3 c) 宜"
+      },
+      "assessment_object": "操作系统与数据库",
+      "required_materials": [
+        "访问控制配置",
+        "完整性保护说明"
+      ],
+      "check_method": "人工核查访问控制信息的完整性保护",
+      "automated_rule_ids": [],
+      "note": "访问控制类证据未接入。"
+    },
+    {
+      "indicator_id": "DEV-SECURITY-LABEL",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.3 d)",
+      "title": "重要信息资源安全标记完整性",
+      "domain": "设备和计算安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.3 d) 宜",
+        "2": "7.3 d) 宜",
+        "3": "8.3 d) 宜",
+        "4": "9.3 d) 宜"
+      },
+      "assessment_object": "重要信息资源",
+      "required_materials": [
+        "安全标记配置"
+      ],
+      "check_method": "人工核查安全标记的完整性保护",
+      "automated_rule_ids": [],
+      "note": "安全标记类证据未接入。"
+    },
+    {
+      "indicator_id": "DEV-LOG-INTEGRITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.3 e)",
+      "title": "日志记录完整性",
+      "domain": "设备和计算安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.3 e) 可",
+        "2": "7.3 e) 宜",
+        "3": "8.3 e) 应",
+        "4": "9.3 e) 应"
+      },
+      "assessment_object": "系统日志",
+      "required_materials": [
+        "日志文件",
+        "日志完整性保护说明"
+      ],
+      "check_method": "人工核查日志完整性保护机制",
+      "automated_rule_ids": [],
+      "note": "日志材料格式未接入（题目要求 1 的剩余部分）。"
+    },
+    {
+      "indicator_id": "DEV-EXECUTABLE-INTEGRITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.3 f)",
+      "title": "重要可执行程序完整性与来源真实性",
+      "domain": "设备和计算安全",
+      "levels": [
+        3,
+        4
+      ],
+      "level_clauses": {
+        "3": "8.3 f) 应",
+        "4": "9.3 f) 应"
+      },
+      "assessment_object": "重要可执行程序",
+      "required_materials": [
+        "程序签名方案",
+        "签名验证记录"
+      ],
+      "check_method": "自动核查签名证书用途；人工核查签验流程",
+      "automated_rule_ids": [],
+      "note": "签名验签记录未接入。"
+    },
+    {
+      "indicator_id": "DEV-CRYPTO-SERVICE",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.3 g)",
+      "title": "密码服务（设备和计算安全）",
+      "domain": "设备和计算安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.3 f) 可",
+        "2": "7.3 f) 可",
+        "3": "8.3 g) 可",
+        "4": "9.3 g) 可"
+      },
+      "assessment_object": "采用的密码服务",
+      "required_materials": [
+        "密码服务资质证明"
+      ],
+      "check_method": "人工核查密码服务资质",
+      "automated_rule_ids": [],
+      "note": "资质类材料未接入。"
+    },
+    {
+      "indicator_id": "DEV-CRYPTO-PRODUCT",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.3 h)",
+      "title": "密码产品（设备和计算安全）",
+      "domain": "设备和计算安全",
+      "levels": [
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "2": "7.3 g) 二级及以上",
+        "3": "8.3 h) 二级及以上",
+        "4": "9.3 h) 三级及以上"
+      },
+      "assessment_object": "采用的密码产品",
+      "required_materials": [
+        "密码产品认证证书",
+        "GB/T 37092 安全等级证明"
+      ],
+      "check_method": "人工核查密码产品的 GB/T 37092 安全等级",
+      "automated_rule_ids": [],
+      "note": "产品认证材料未接入。"
+    },
+    {
+      "indicator_id": "APP-IDENTITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.4 a)",
+      "title": "应用和数据安全的身份鉴别",
+      "domain": "应用和数据安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.4 a) 可",
+        "2": "7.4 a) 宜",
+        "3": "8.4 a) 应",
+        "4": "9.4 a) 应"
+      },
+      "assessment_object": "应用系统的用户与管理员",
+      "required_materials": [
+        "应用配置",
+        "认证材料",
+        "应用证书"
+      ],
+      "check_method": "自动核查应用证书的有效期、用途与强度；人工核查应用层身份鉴别方式",
+      "automated_rule_ids": [],
+      "note": "应用层认证配置未接入。设备侧证书证据与它同源，但为避免同一规则重复归属，证书类规则只登记在 DEV-IDENTITY。"
+    },
+    {
+      "indicator_id": "APP-ACCESS-CONTROL",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.4 b)",
+      "title": "访问控制信息完整性（应用和数据安全）",
+      "domain": "应用和数据安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.4 b) 可",
+        "2": "7.4 b) 可",
+        "3": "8.4 b) 宜",
+        "4": "9.4 b) 宜"
+      },
+      "assessment_object": "应用系统权限数据",
+      "required_materials": [
+        "权限配置",
+        "完整性保护说明"
+      ],
+      "check_method": "人工核查权限信息的完整性保护",
+      "automated_rule_ids": [],
+      "note": "访问控制类证据未接入。"
+    },
+    {
+      "indicator_id": "APP-SECURITY-LABEL",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.4 c)",
+      "title": "重要信息资源安全标记完整性（应用和数据安全）",
+      "domain": "应用和数据安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.4 c) 宜",
+        "2": "7.4 c) 宜",
+        "3": "8.4 c) 宜",
+        "4": "9.4 c) 宜"
+      },
+      "assessment_object": "应用系统重要信息资源",
+      "required_materials": [
+        "安全标记配置"
+      ],
+      "check_method": "人工核查安全标记完整性保护",
+      "automated_rule_ids": [],
+      "note": "安全标记类证据未接入。"
+    },
+    {
+      "indicator_id": "APP-DATA-CONFIDENTIALITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.4 d)",
+      "title": "重要数据传输机密性",
+      "domain": "应用和数据安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.4 d) 可",
+        "2": "7.4 d) 可",
+        "3": "8.4 d) 应",
+        "4": "9.4 d) 应"
+      },
+      "assessment_object": "重要数据传输",
+      "required_materials": [
+        "传输加密方案",
+        "服务端配置"
+      ],
+      "check_method": "自动核查传输层是否启用弱套件/弱协议与短密钥",
+      "automated_rule_ids": [],
+      "note": "本指标与已自动核查的同类指标证据同源，但每条规则只登记一个归属指标，故不在此重复声明。"
+    },
+    {
+      "indicator_id": "APP-DATA-STORAGE-CONFIDENTIALITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.4 e)",
+      "title": "重要数据存储机密性",
+      "domain": "应用和数据安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.4 f) 可",
+        "2": "7.4 e) 可",
+        "3": "8.4 e) 应",
+        "4": "9.4 e) 应"
+      },
+      "assessment_object": "重要数据存储",
+      "required_materials": [
+        "存储加密方案",
+        "数据库配置"
+      ],
+      "check_method": "人工核查存储机密性保护机制",
+      "automated_rule_ids": [],
+      "note": "数据层证据未接入。"
+    },
+    {
+      "indicator_id": "APP-DATA-INTEGRITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.4 f)",
+      "title": "重要数据传输完整性",
+      "domain": "应用和数据安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.4 e) 可",
+        "2": "7.4 f) 可",
+        "3": "8.4 f) 应",
+        "4": "9.4 f) 应"
+      },
+      "assessment_object": "重要数据传输",
+      "required_materials": [
+        "传输完整性方案",
+        "服务端配置"
+      ],
+      "check_method": "自动核查传输协议版本；人工核查完整性机制",
+      "automated_rule_ids": [],
+      "note": "本指标与已自动核查的同类指标证据同源，但每条规则只登记一个归属指标，故不在此重复声明。"
+    },
+    {
+      "indicator_id": "APP-DATA-STORAGE-INTEGRITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.4 g)",
+      "title": "重要数据存储完整性",
+      "domain": "应用和数据安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.4 g) 可",
+        "2": "7.4 g) 可",
+        "3": "8.4 g) 宜",
+        "4": "9.4 g) 宜"
+      },
+      "assessment_object": "重要数据存储",
+      "required_materials": [
+        "存储完整性方案",
+        "数据库配置"
+      ],
+      "check_method": "人工核查存储完整性保护机制",
+      "automated_rule_ids": [],
+      "note": "数据层证据未接入。"
+    },
+    {
+      "indicator_id": "APP-NON-REPUDIATION",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.4 h)",
+      "title": "不可否认性",
+      "domain": "应用和数据安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.4 h) 宜",
+        "2": "7.4 h) 宜",
+        "3": "8.4 h) 宜",
+        "4": "9.4 h) 宜"
+      },
+      "assessment_object": "重要数据的产生与接收方",
+      "required_materials": [
+        "签名/验签方案",
+        "数字证书",
+        "时间戳材料"
+      ],
+      "check_method": "自动核查签名证书的用途与信任链；人工核查验签与取证流程",
+      "automated_rule_ids": [],
+      "note": "只能从证书用途间接推断，缺少签名验签日志；时间戳材料未接入。证书类规则已唯一归属 NET-COMM-IDENTITY 与 DEV-IDENTITY。"
+    },
+    {
+      "indicator_id": "APP-CRYPTO-SERVICE",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.4 i)",
+      "title": "密码服务（应用和数据安全）",
+      "domain": "应用和数据安全",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.4 i) 可",
+        "2": "7.4 i) 可",
+        "3": "8.4 i) 可",
+        "4": "9.4 i) 可"
+      },
+      "assessment_object": "采用的密码服务",
+      "required_materials": [
+        "密码服务资质证明"
+      ],
+      "check_method": "人工核查密码服务资质",
+      "automated_rule_ids": [],
+      "note": "资质类材料未接入。"
+    },
+    {
+      "indicator_id": "APP-CRYPTO-PRODUCT",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.4 j)",
+      "title": "密码产品（应用和数据安全）",
+      "domain": "应用和数据安全",
+      "levels": [
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "2": "7.4 j) 二级及以上",
+        "3": "8.4 j) 二级及以上",
+        "4": "9.4 j) 三级及以上"
+      },
+      "assessment_object": "采用的密码产品",
+      "required_materials": [
+        "密码产品认证证书",
+        "GB/T 37092 安全等级证明"
+      ],
+      "check_method": "人工核查密码产品的 GB/T 37092 安全等级",
+      "automated_rule_ids": [],
+      "note": "产品认证材料未接入。"
+    },
+    {
+      "indicator_id": "MGT-POLICY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.5 a)",
+      "title": "具备密码应用安全管理制度",
+      "domain": "管理制度",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.5 a) 应",
+        "2": "7.5 a) 应",
+        "3": "8.5 a) 应",
+        "4": "9.5 a) 应"
+      },
+      "assessment_object": "密码应用安全管理制度",
+      "required_materials": [
+        "密码应用安全管理制度文本"
+      ],
+      "check_method": "人工核查制度是否覆盖人员、密钥、建设、应急、软硬件及介质管理",
+      "automated_rule_ids": [],
+      "note": "按实现方案 §7.4.2 的约定，制度文本不作为自动证明管理活动已有效执行的依据。"
+    },
+    {
+      "indicator_id": "MGT-KEY-POLICY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.5 b)",
+      "title": "密钥管理规则",
+      "domain": "管理制度",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.5 b) 应",
+        "2": "7.5 b) 应",
+        "3": "8.5 b) 应",
+        "4": "9.5 b) 应"
+      },
+      "assessment_object": "密钥管理规则",
+      "required_materials": [
+        "密钥管理规则文本"
+      ],
+      "check_method": "人工核查是否依据密码应用方案建立密钥管理规则（对应附录 B）",
+      "automated_rule_ids": [],
+      "note": "与附录 B「密钥生存周期管理」对应；本工具不索取私钥。"
+    },
+    {
+      "indicator_id": "MGT-OPERATION-PROCEDURE",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.5 c)",
+      "title": "建立操作规程",
+      "domain": "管理制度",
+      "levels": [
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "2": "7.5 c) 应",
+        "3": "8.5 c) 应",
+        "4": "9.5 c) 应"
+      },
+      "assessment_object": "密码相关操作规程",
+      "required_materials": [
+        "操作规程文本"
+      ],
+      "check_method": "人工核查是否对管理人员或操作人员建立日常管理操作规程",
+      "automated_rule_ids": [],
+      "note": "管理类证据未接入。"
+    },
+    {
+      "indicator_id": "MGT-PERIODIC-REVIEW",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.5 d)",
+      "title": "定期修订安全管理制度",
+      "domain": "管理制度",
+      "levels": [
+        3,
+        4
+      ],
+      "level_clauses": {
+        "3": "8.5 d) 应",
+        "4": "9.5 d) 应"
+      },
+      "assessment_object": "制度修订记录",
+      "required_materials": [
+        "制度评审与修订记录"
+      ],
+      "check_method": "人工核查是否定期对制度的合理性和适用性进行论证和审定",
+      "automated_rule_ids": [],
+      "note": "管理类证据未接入。"
+    },
+    {
+      "indicator_id": "MGT-PUBLISH-PROCESS",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.5 e)",
+      "title": "明确管理制度发布流程",
+      "domain": "管理制度",
+      "levels": [
+        3,
+        4
+      ],
+      "level_clauses": {
+        "3": "8.5 e) 应",
+        "4": "9.5 e) 应"
+      },
+      "assessment_object": "制度发布流程",
+      "required_materials": [
+        "发布流程文件与版本控制记录"
+      ],
+      "check_method": "人工核查发布流程与版本控制",
+      "automated_rule_ids": [],
+      "note": "管理类证据未接入。"
+    },
+    {
+      "indicator_id": "MGT-EXECUTION-RECORD",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.5 f)",
+      "title": "制度执行过程记录留存",
+      "domain": "管理制度",
+      "levels": [
+        3,
+        4
+      ],
+      "level_clauses": {
+        "3": "8.5 f) 应",
+        "4": "9.5 f) 应"
+      },
+      "assessment_object": "制度执行记录",
+      "required_materials": [
+        "操作规程执行记录"
+      ],
+      "check_method": "人工核查执行记录是否妥善保存",
+      "automated_rule_ids": [],
+      "note": "管理类证据未接入。"
+    },
+    {
+      "indicator_id": "MGT-PERSONNEL-AWARENESS",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.6 a)",
+      "title": "人员了解密码法律法规与制度",
+      "domain": "人员管理",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.6 a) 应",
+        "2": "7.6 a) 应",
+        "3": "8.6 a) 应",
+        "4": "9.6 a) 应"
+      },
+      "assessment_object": "相关人员",
+      "required_materials": [
+        "培训与考核记录"
+      ],
+      "check_method": "人工核查人员是否了解相关法律法规、密码应用安全管理制度",
+      "automated_rule_ids": [],
+      "note": "管理类证据未接入。"
+    },
+    {
+      "indicator_id": "MGT-PERSONNEL-RESPONSIBILITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.6 b)",
+      "title": "建立密码应用岗位责任制度",
+      "domain": "人员管理",
+      "levels": [
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "2": "7.6 b) 应",
+        "3": "8.6 b) 应",
+        "4": "9.6 b) 应"
+      },
+      "assessment_object": "密码应用岗位",
+      "required_materials": [
+        "岗位责任制度",
+        "多共管机制说明",
+        "责任分离说明",
+        "账号管理记录"
+      ],
+      "check_method": "人工核查各岗位职责、多共管机制、三员责任分离与账号不共用；三级起还需内部员工任用与背景调查",
+      "automated_rule_ids": [],
+      "note": "三级（8.6 b) 1)—5)）要求比二级更细：关键岗位多人共管、安全审计员与管理员/操作员责任分离、账号不共用、内部员工任用与背景调查。"
+    },
+    {
+      "indicator_id": "MGT-PERSONNEL-TRAINING",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.6 c)",
+      "title": "建立上岗人员培训制度",
+      "domain": "人员管理",
+      "levels": [
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "2": "7.6 c) 宜",
+        "3": "8.6 c) 应",
+        "4": "9.6 c) 应"
+      },
+      "assessment_object": "密码相关岗位人员",
+      "required_materials": [
+        "培训记录"
+      ],
+      "check_method": "人工核查培训制度与记录",
+      "automated_rule_ids": [],
+      "note": "管理类证据未接入。"
+    },
+    {
+      "indicator_id": "MGT-PERSONNEL-ASSESSMENT",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.6 d)",
+      "title": "定期进行安全岗位人员考核",
+      "domain": "人员管理",
+      "levels": [
+        3,
+        4
+      ],
+      "level_clauses": {
+        "3": "8.6 d) 应",
+        "4": "9.6 d) 应"
+      },
+      "assessment_object": "密码应用安全岗位人员",
+      "required_materials": [
+        "考核记录"
+      ],
+      "check_method": "人工核查定期考核记录",
+      "automated_rule_ids": [],
+      "note": "管理类证据未接入。"
+    },
+    {
+      "indicator_id": "MGT-PERSONNEL-CONFIDENTIALITY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.6 e)",
+      "title": "关键岗位人员保密与调离制度",
+      "domain": "人员管理",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.6 b) 应",
+        "2": "7.6 d) 应",
+        "3": "8.6 e) 应",
+        "4": "9.6 e) 应"
+      },
+      "assessment_object": "关键岗位人员",
+      "required_materials": [
+        "保密协议",
+        "调离制度",
+        "权限终止记录"
+      ],
+      "check_method": "人工核查保密与调离制度及权限终止执行情况",
+      "automated_rule_ids": [],
+      "note": "管理类证据未接入。"
+    },
+    {
+      "indicator_id": "MGT-BUILD-PLAN",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.7 a)",
+      "title": "制定密码应用方案",
+      "domain": "建设运行",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.7 a) 应",
+        "2": "7.7 a) 应",
+        "3": "8.7 a) 应",
+        "4": "9.7 a) 应"
+      },
+      "assessment_object": "密码应用方案",
+      "required_materials": [
+        "密码应用方案文本"
+      ],
+      "check_method": "人工核查方案是否依据相关标准与密码应用需求制定",
+      "automated_rule_ids": [],
+      "note": "方案文档格式未接入。"
+    },
+    {
+      "indicator_id": "MGT-BUILD-STRATEGY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.7 b)",
+      "title": "制定密钥安全管理策略",
+      "domain": "建设运行",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.7 b) 应",
+        "2": "7.7 b) 应",
+        "3": "8.7 b) 应",
+        "4": "9.7 b) 应"
+      },
+      "assessment_object": "密钥安全管理策略",
+      "required_materials": [
+        "密钥安全管理策略文本"
+      ],
+      "check_method": "人工核查策略是否确定密钥种类、体系及生存周期各环节管理要求（参见附录 B）",
+      "automated_rule_ids": [],
+      "note": "对应附录 B；本工具不索取私钥。"
+    },
+    {
+      "indicator_id": "MGT-BUILD-IMPLEMENTATION",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.7 c)",
+      "title": "制定实施方案",
+      "domain": "建设运行",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.7 c) 应",
+        "2": "7.7 c) 应",
+        "3": "8.7 c) 应",
+        "4": "9.7 c) 应"
+      },
+      "assessment_object": "密码应用实施方案",
+      "required_materials": [
+        "实施方案文本"
+      ],
+      "check_method": "人工核查是否按照密码应用方案实施建设",
+      "automated_rule_ids": [],
+      "note": "方案文档格式未接入。"
+    },
+    {
+      "indicator_id": "MGT-BUILD-EVALUATION",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.7 d)",
+      "title": "投入运行前进行密码应用安全性评估",
+      "domain": "建设运行",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.7 d) 可",
+        "2": "7.7 d) 宜",
+        "3": "8.7 d) 应",
+        "4": "9.7 d) 应"
+      },
+      "assessment_object": "投入运行前的系统",
+      "required_materials": [
+        "密评报告",
+        "评估结论"
+      ],
+      "check_method": "人工核查是否通过密评后才正式运行",
+      "automated_rule_ids": [],
+      "note": "评估报告材料未接入。"
+    },
+    {
+      "indicator_id": "MGT-BUILD-PERIODIC",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.7 e)",
+      "title": "定期开展密码应用安全性评估及攻防对抗演习",
+      "domain": "建设运行",
+      "levels": [
+        3,
+        4
+      ],
+      "level_clauses": {
+        "3": "8.7 e) 应",
+        "4": "9.7 e) 应"
+      },
+      "assessment_object": "已运行系统",
+      "required_materials": [
+        "定期评估记录",
+        "攻防对抗演习记录",
+        "整改记录"
+      ],
+      "check_method": "人工核查定期评估与演习记录及整改情况",
+      "automated_rule_ids": [],
+      "note": "管理类证据未接入。"
+    },
+    {
+      "indicator_id": "MGT-EMERGENCY-STRATEGY",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.8 a)",
+      "title": "制定密码应用应急预案",
+      "domain": "应急处置",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "level_clauses": {
+        "1": "6.8 可",
+        "2": "7.8 宜",
+        "3": "8.8 a) 应",
+        "4": "9.8 a) 应"
+      },
+      "assessment_object": "应急预案",
+      "required_materials": [
+        "应急预案文本",
+        "应急资源清单"
+      ],
+      "check_method": "人工核查应急预案与资源准备，及事件发生时的及时处置",
+      "automated_rule_ids": [],
+      "note": "管理类证据未接入。"
+    },
+    {
+      "indicator_id": "MGT-EMERGENCY-HANDLING",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.8 b)",
+      "title": "事件处置",
+      "domain": "应急处置",
+      "levels": [
+        3,
+        4
+      ],
+      "level_clauses": {
+        "3": "8.8 b) 应",
+        "4": "9.8 b) 应"
+      },
+      "assessment_object": "密码应用安全事件",
+      "required_materials": [
+        "事件处置记录"
+      ],
+      "check_method": "人工核查事件发生后是否及时向信息系统主管部门报告",
+      "automated_rule_ids": [],
+      "note": "管理类证据未接入。"
+    },
+    {
+      "indicator_id": "MGT-EMERGENCY-REPORT",
+      "standard": "GB/T 39786-2021",
+      "clause": "8.8 c)",
+      "title": "向上级主管部门报告处置情况",
+      "domain": "应急处置",
+      "levels": [
+        3,
+        4
+      ],
+      "level_clauses": {
+        "3": "8.8 c) 应",
+        "4": "9.8 c) 应"
+      },
+      "assessment_object": "密码应用安全事件",
+      "required_materials": [
+        "事件报告"
+      ],
+      "check_method": "人工核查处置完成后是否向主管部门及所属密码管理部门报告",
+      "automated_rule_ids": [],
+      "note": "管理类证据未接入。"
+    }
+  ]
+}

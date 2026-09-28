@@ -8,10 +8,11 @@ layout agreed for integration:
     manifest.files               -- ``{relative path: SM3 of that file's bytes}``
 
 The manifest deliberately does not list itself (no circular digest). This module
-reads the directory independently — no database, no model lookups, no decision
-engine — and does not replay rules: ``replay_status`` is always ``FAIL`` until
-rule replay is implemented. The full bundle format and the exporter still need
-to be coordinated with member three.
+reads the directory independently — no database, no model lookups. It also
+**replays the fixed rules** over the snapshot stored inside the bundle and
+compares the result with the recorded decisions semantically: decision IDs are
+re-allocated during replay, so they are not compared. That is what makes
+``replay_status`` meaningful rather than a constant.
 """
 
 from __future__ import annotations
@@ -22,9 +23,14 @@ from pathlib import Path
 from mvp_contracts.models import (
     BundleManifest,
     CheckStatus,
+    Decision,
     ErrorItem,
+    EvidenceSnapshot,
+    RulePack,
     VerifyResult,
 )
+
+from .engine import DecisionEngine
 
 MANIFEST_NAME = "manifest.json"
 PLACEHOLDER_BUNDLE_ID = "UNKNOWN_BUNDLE_ID"
@@ -39,13 +45,17 @@ E_BUNDLE_FILE_NOT_REGULAR = "E_BUNDLE_FILE_NOT_REGULAR"
 E_BUNDLE_PATH_ESCAPE = "E_BUNDLE_PATH_ESCAPE"
 E_BUNDLE_FILE_READ_FAILED = "E_BUNDLE_FILE_READ_FAILED"
 E_BUNDLE_DIGEST_MISMATCH = "E_BUNDLE_DIGEST_MISMATCH"
-E_REPLAY_NOT_IMPLEMENTED = "E_REPLAY_NOT_IMPLEMENTED"
+# 重放相关：完整性不通过时拒绝重放，重放缺输入或结果不一致也明确失败
+E_REPLAY_BUNDLE_INCOMPLETE = "E_REPLAY_BUNDLE_INCOMPLETE"
+E_REPLAY_INPUT_MISSING = "E_REPLAY_INPUT_MISSING"
+E_REPLAY_FAILED = "E_REPLAY_FAILED"
+E_REPLAY_MISMATCH = "E_REPLAY_MISMATCH"
 
 _CHUNK_SIZE = 1024 * 1024  # 1 MiB 分块读取，避免把大文件整体载入内存
 
 
 class BundleVerifier:
-    """独立核验本地证据包目录的文件完整性；不重放规则。"""
+    """独立核验本地证据包：先查文件完整性，再用规则重放一次判定。"""
 
     def verify(self, bundle_path: Path) -> VerifyResult:
         errors: list[ErrorItem] = []
@@ -58,15 +68,24 @@ class BundleVerifier:
             else CheckStatus.FAIL
         )
 
-        # 规则重放尚未实现：即使完整性通过，重放状态也必须是 FAIL，
-        # 不得照抄样例中的 PASS。
-        errors.append(_replay_not_implemented())
+        if integrity_status is CheckStatus.PASS and manifest is not None:
+            replay_status, replay_errors = _replay(bundle_path, manifest)
+        else:
+            # 包被改动过就不重放：否则可能拿被篡改的快照算出「一致」的假象
+            replay_status = CheckStatus.FAIL
+            replay_errors = [
+                _error(
+                    E_REPLAY_BUNDLE_INCOMPLETE,
+                    "证据包完整性未通过，拒绝重放判定",
+                )
+            ]
+        errors.extend(replay_errors)
 
         return VerifyResult(
             schema_version="0.2.0-mvp",
             bundle_id=bundle_id,
             integrity_status=integrity_status,
-            replay_status=CheckStatus.FAIL,
+            replay_status=replay_status,
             errors=errors,
         )
 
@@ -215,10 +234,117 @@ def _sm3_of(path: Path, rel: str, errors: list[ErrorItem]) -> str | None:
         return None
 
 
-def _replay_not_implemented() -> ErrorItem:
-    return ErrorItem(
-        code=E_REPLAY_NOT_IMPLEMENTED,
-        stage=STAGE,
-        artifact_id=None,
-        message="规则重放核验尚未实现，未重放任何判定",
+def _replay(
+    bundle_path: Path, manifest: BundleManifest
+) -> tuple[CheckStatus, list[ErrorItem]]:
+    """用规则重新计算一次判定，与证据包里记录的判定做语义比对。
+
+    独立核验器不连接数据库、不调用模型；重放只依赖证据包内的快照、判定与规则实现。
+    判定 ID 是重新分配的，因此比对忽略 ID，只比对象、条件状态、可能结论、建议标签、
+    工作流状态、支持事实与缺口引用。
+    """
+    snapshot = _load_snapshot(bundle_path, manifest)
+    if snapshot is None:
+        return CheckStatus.FAIL, [
+            _error(E_REPLAY_INPUT_MISSING, "证据包里没有与清单匹配的快照，无法重放")
+        ]
+
+    recorded = _load_decisions(bundle_path)
+    if not recorded:
+        return CheckStatus.FAIL, [
+            _error(E_REPLAY_INPUT_MISSING, "证据包里没有判定记录，无法比对重放结果")
+        ]
+
+    try:
+        rule_pack = RulePack(
+            schema_version=snapshot.schema_version,
+            id="RP-REPLAY",
+            version=snapshot.rule_version,
+            sm3="0" * 64,
+            rule_ids=sorted({decision.rule_id for decision in recorded}),
+        )
+        replayed = DecisionEngine(_ReplayIdAllocator()).evaluate(snapshot, rule_pack)
+    except Exception as exc:  # 规则无法重放本身就是核验失败
+        return CheckStatus.FAIL, [
+            _error(
+                E_REPLAY_FAILED,
+                f"规则重放无法完成：{type(exc).__name__}: {exc}",
+            )
+        ]
+
+    if _semantic(replayed) != _semantic(recorded):
+        return CheckStatus.FAIL, [
+            _error(
+                E_REPLAY_MISMATCH,
+                "重放结果与证据包中记录的判定不一致，判定可能被改写或规则已变更",
+            )
+        ]
+    return CheckStatus.PASS, []
+
+
+class _ReplayIdAllocator:
+    """重放专用分配器：ID 会与原件不同，所以比对时刻意忽略 ID。"""
+
+    def __init__(self) -> None:
+        self._counters: dict[tuple[str, str], int] = {}
+
+    def allocate(self, *, prefix: str, project_id: str) -> str:
+        key = (prefix, project_id)
+        self._counters[key] = self._counters.get(key, 0) + 1
+        return f"REPLAY-{prefix}-{project_id}-{self._counters[key]:04d}"
+
+
+def _load_snapshot(bundle_path: Path, manifest: BundleManifest) -> EvidenceSnapshot | None:
+    directory = bundle_path / "snapshot"
+    if not directory.is_dir():
+        return None
+    for path in sorted(directory.glob("*.json")):
+        try:
+            snapshot = EvidenceSnapshot.model_validate_json(path.read_bytes())
+        except Exception:
+            continue
+        if snapshot.id == manifest.snapshot_id:
+            return snapshot
+    return None
+
+
+def _load_decisions(bundle_path: Path) -> list[Decision]:
+    directory = bundle_path / "decisions"
+    if not directory.is_dir():
+        return []
+    decisions: list[Decision] = []
+    for path in sorted(directory.glob("*.json")):
+        try:
+            decisions.append(Decision.model_validate_json(path.read_bytes()))
+        except Exception:
+            continue
+    return decisions
+
+
+def _semantic(decisions: list[Decision]) -> list[tuple]:
+    """判定的语义指纹，刻意不含 ID。"""
+    return sorted(
+        (
+            decision.object_id,
+            decision.rule_id,
+            decision.rule_version,
+            tuple(
+                sorted(
+                    (name, str(state))
+                    for name, state in decision.condition_states.items()
+                )
+            ),
+            tuple(str(label) for label in decision.possible_labels),
+            str(decision.proposed_label)
+            if decision.proposed_label is not None
+            else None,
+            str(decision.workflow_status),
+            tuple(sorted(decision.support_fact_ids)),
+            tuple(sorted(decision.gap_ids)),
+        )
+        for decision in decisions
     )
+
+
+def _error(code: str, message: str) -> ErrorItem:
+    return ErrorItem(code=code, stage=STAGE, artifact_id=None, message=message)

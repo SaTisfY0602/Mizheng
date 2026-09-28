@@ -1,0 +1,104 @@
+{
+  "meta": {
+    "id": "RP-CRYPTO-ASSESS",
+    "version": "0.3.0-mvp",
+    "supersedes": [
+      "demo-0.2.0"
+    ],
+    "schema": "mvp-rules-1",
+    "description": "已实现规则清单：符合性判定的条件与结论映射",
+    "created_at": "2026-09-28T00:00:00Z",
+    "porting_note": "判定侧此前只有 DEMO-BIND-TIME 一条演示规则（见二阶段进展报告 §六.2）。本文件把风险侧的经验迁到符合性判定：密钥强度与证书用途现在同时有「符合性判定」与「风险识别」两个口径，两者共享同一份阈值——阈值只在本规则包里写一次。",
+    "rule_versions_note": "rule_versions 记录每个快照规则版本允许跑哪些判定规则。历史版本 demo-0.2.0 的样例快照只带绑定与到期时间两类事实，不足以判定密钥强度与用途，所以只声明 DEC-BIND-TIME；这避免让字段不全的样例快照产出假阴性。",
+    "rule_versions": {
+      "demo-0.2.0": [
+        "DEC-BIND-TIME"
+      ],
+      "0.3.0-mvp": [
+        "DEC-BIND-TIME",
+        "DEC-CERT-KEY-STRENGTH",
+        "DEC-CERT-KEY-USAGE"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "rule_id": "DEC-BIND-TIME",
+      "title": "服务在核查时点使用的证书处于有效期内",
+      "layer": "DECISION",
+      "indicator_id": "DEV-IDENTITY",
+      "tool_unit": "U05",
+      "evaluation": "自动",
+      "engine_entry": "mvp_decision.rules.evaluate_demo_bind_time",
+      "condition": "binding ∧ certificate_time，两个原子条件都成立才给出唯一建议",
+      "parameters": {
+        "engine_alias": "DEMO-BIND-TIME",
+        "conditions": [
+          "binding",
+          "certificate_time"
+        ]
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.3 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_demo_bind_time_rule.py",
+        "tests/test_decision_engine.py"
+      ]
+    },
+    {
+      "rule_id": "DEC-CERT-KEY-STRENGTH",
+      "title": "证书公钥强度满足最低要求",
+      "layer": "DECISION",
+      "indicator_id": "DEV-IDENTITY",
+      "tool_unit": "U04",
+      "evaluation": "自动",
+      "engine_entry": "mvp_decision.rules.evaluate_certificate_key_strength",
+      "condition": "已确认绑定 ∧ 已准入公钥算法与密钥长度；RSA 低于 min_rsa_key_size 判 REFUTED，非 RSA（如 SM2/EC）按 curve_name 判定",
+      "parameters": {
+        "min_rsa_key_size": 2048,
+        "rsa_algorithm_name": "RSAPublicKey",
+        "weak_curves": [
+          "secp192r1",
+          "prime192v1",
+          "secp224r1"
+        ],
+        "min_curve_bits": 256,
+        "preferred_algorithm": "SM2"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.3 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_decision_engine.py::test_key_strength_rule_*"
+      ]
+    },
+    {
+      "rule_id": "DEC-CERT-KEY-USAGE",
+      "title": "证书声明了可用于服务端身份鉴别的用途",
+      "layer": "DECISION",
+      "indicator_id": "DEV-IDENTITY",
+      "tool_unit": "U07",
+      "evaluation": "自动",
+      "engine_entry": "mvp_decision.rules.evaluate_certificate_purpose",
+      "condition": "已确认绑定 ∧ keyUsage 与 ExtendedKeyUsage 都已准入；EKU 不含 serverAuth 判 REFUTED，keyUsage 缺少要求项判 REFUTED，扩展缺失判 UNKNOWN 并挂缺口",
+      "parameters": {
+        "required_eku": "serverAuth",
+        "key_usage_alternatives": [
+          [
+            "digital_signature"
+          ],
+          [
+            "key_encipherment"
+          ]
+        ]
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.3 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_decision_engine.py::test_purpose_rule_*"
+      ]
+    }
+  ]
+}

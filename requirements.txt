@@ -1,0 +1,6 @@
+# 运行依赖（Python 3.12）
+#
+# requirements-contracts.txt 仍保留为共享契约阶段的过渡清单；
+# 本文件是当前可运行版本的完整依赖，包含成员一解析器需要的 cryptography。
+pydantic==2.13.5
+cryptography==50.0.1

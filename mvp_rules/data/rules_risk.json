@@ -1,0 +1,361 @@
+{
+  "meta": {
+    "id": "RP-CRYPTO-ASSESS",
+    "version": "0.3.0-mvp",
+    "supersedes": [
+      "demo-0.2.0"
+    ],
+    "schema": "mvp-rules-1",
+    "description": "已实现规则清单：风险识别的可执行参数与标准指标映射",
+    "created_at": "2026-09-28T00:00:00Z",
+    "porting_note": "本文件是弱算法/弱协议/阈值口径的唯一来源。此前这些名单硬编码在 mvp_risk/rules.py 里（见二阶段进展报告 §六.1）；迁移后规则函数只负责求值，不再自带名单。"
+  },
+  "rules": [
+    {
+      "rule_id": "RISK-TLS-WEAK-PROTOCOL",
+      "title": "配置启用了已废弃的 TLS 协议版本",
+      "layer": "RISK",
+      "indicator_id": "NET-COMM-INTEGRITY",
+      "tool_unit": "U02",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.transport_risks",
+      "condition": "configured_tls_protocols 与参数 weak_protocols 求交后非空",
+      "parameters": {
+        "severity": "HIGH",
+        "weak_protocols": [
+          "SSLv2",
+          "SSLv3",
+          "TLSv1",
+          "TLSv1.1"
+        ],
+        "remediation_protocols": [
+          "TLSv1.2",
+          "TLSv1.3"
+        ]
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.2 b)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_risky_case_reports_expected_risks_in_severity_order",
+        "tests/test_risk_engine.py::test_modern_protocols_are_not_reported"
+      ]
+    },
+    {
+      "rule_id": "RISK-TLS-WEAK-CIPHER",
+      "title": "配置启用了弱密码套件",
+      "layer": "RISK",
+      "indicator_id": "NET-COMM-CONFIDENTIALITY",
+      "tool_unit": "U03",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.transport_risks",
+      "condition": "configured_cipher_suites 中非排除项（不以 ! 开头）的字符串命中 weak_cipher_markers",
+      "parameters": {
+        "severity": "HIGH",
+        "weak_cipher_markers": [
+          "RC4",
+          "3DES",
+          "DES",
+          "NULL",
+          "EXPORT",
+          "MD5",
+          "anon",
+          "ADH"
+        ],
+        "exclusion_prefix": "!"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.2 c)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_risky_case_reports_expected_risks_in_severity_order",
+        "tests/test_risk_engine.py::test_excluded_cipher_entries_are_not_reported"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-EXPIRED",
+      "title": "证书在核查时点已过期",
+      "layer": "RISK",
+      "indicator_id": "DEV-IDENTITY",
+      "tool_unit": "U05",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_time_risks",
+      "condition": "certificate_not_after ≤ snapshot.evaluation_time",
+      "parameters": {
+        "severity": "HIGH"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.3 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_expired_certificate_is_reported"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-EXPIRING",
+      "title": "证书在临期窗口内即将到期",
+      "layer": "RISK",
+      "indicator_id": "DEV-IDENTITY",
+      "tool_unit": "U05",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_time_risks",
+      "condition": "0 < certificate_not_after − evaluation_time ≤ expiring_days 天",
+      "parameters": {
+        "severity": "MEDIUM",
+        "expiring_days": 30
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.3 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_risky_case_reports_expected_risks_in_severity_order"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-WEAK-SIGNATURE",
+      "title": "证书使用弱签名算法",
+      "layer": "RISK",
+      "indicator_id": "DEV-IDENTITY",
+      "tool_unit": "U06",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_algorithm_risks",
+      "condition": "certificate_signature_algorithm 命中 weak_signature_algorithms",
+      "parameters": {
+        "severity": "HIGH",
+        "weak_signature_algorithms": {
+          "sha1WithRSAEncryption": "HIGH",
+          "md5WithRSAEncryption": "HIGH",
+          "ecdsa-with-SHA1": "HIGH"
+        }
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.3 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_weak_signature_algorithm_is_reported"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-SIGNATURE-UNKNOWN",
+      "title": "证书签名算法无法识别",
+      "layer": "RISK",
+      "indicator_id": "DEV-IDENTITY",
+      "tool_unit": "U06",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_algorithm_risks",
+      "condition": "certificate_signature_algorithm 以 unknown_oid: 开头",
+      "parameters": {
+        "severity": "LOW",
+        "unknown_oid_prefix": "unknown_oid:"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.3 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_unknown_signature_algorithm_is_reported_as_low"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-WEAK-KEY",
+      "title": "RSA 密钥长度不足",
+      "layer": "RISK",
+      "indicator_id": "DEV-IDENTITY",
+      "tool_unit": "U04",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_algorithm_risks",
+      "condition": "certificate_public_key_algorithm == \"RSAPublicKey\" 且 certificate_public_key_size < min_rsa_key_size",
+      "parameters": {
+        "severity": "HIGH",
+        "min_rsa_key_size": 2048,
+        "rsa_algorithm_name": "RSAPublicKey",
+        "preferred_alternative": "SM2"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.3 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_risky_case_reports_expected_risks_in_severity_order"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-TIME-MISSING",
+      "title": "已绑定但缺少证书到期时间事实",
+      "layer": "RISK",
+      "indicator_id": "DEV-IDENTITY",
+      "tool_unit": "U05",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_time_risks",
+      "condition": "存在绑定，但对应证书没有 certificate_not_after 准入事实",
+      "parameters": {
+        "severity": "MEDIUM"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.3 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_missing_not_after_fact_is_reported"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-TIME-UNPARSABLE",
+      "title": "证书到期时间不是带 UTC 时区的时刻",
+      "layer": "RISK",
+      "indicator_id": "DEV-IDENTITY",
+      "tool_unit": "U05",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_time_risks",
+      "condition": "certificate_not_after 的值无法解析或不带 UTC 时区",
+      "parameters": {
+        "severity": "MEDIUM"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.3 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_unparsable_not_after_is_reported"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-NOT-YET-VALID",
+      "title": "证书尚未生效",
+      "layer": "RISK",
+      "indicator_id": "DEV-IDENTITY",
+      "tool_unit": "U05",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_validity_risks",
+      "condition": "certificate_not_before > snapshot.evaluation_time",
+      "parameters": {
+        "severity": "HIGH"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.3 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_not_yet_valid_certificate_is_reported"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-SELF-SIGNED",
+      "title": "服务使用了自签证书",
+      "layer": "RISK",
+      "indicator_id": "NET-COMM-IDENTITY",
+      "tool_unit": "U06",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_trust_risks",
+      "condition": "certificate_is_self_signed is True",
+      "parameters": {
+        "severity": "HIGH"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.2 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_risky_case_reports_expected_risks_in_severity_order",
+        "tests/test_risk_engine.py::test_trusted_chain_is_not_reported"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-UNTRUSTED-ISSUER",
+      "title": "签发者证书未随材料提供，信任链无法验证",
+      "layer": "RISK",
+      "indicator_id": "NET-COMM-IDENTITY",
+      "tool_unit": "U06",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_trust_risks",
+      "condition": "certificate_issuer 不在本次材料的任意 certificate_subject 之中",
+      "parameters": {
+        "severity": "HIGH"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.2 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_untrusted_issuer_when_ca_certificate_is_missing"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-PURPOSE-MISSING",
+      "title": "证书未声明用途约束",
+      "layer": "RISK",
+      "indicator_id": "DEV-IDENTITY",
+      "tool_unit": "U07",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_purpose_risks",
+      "condition": "certificate_key_usage 或 certificate_extended_key_usage 缺失",
+      "parameters": {
+        "severity": "MEDIUM",
+        "required_key_usages": [
+          "digitalSignature",
+          "keyEncipherment"
+        ],
+        "required_eku": "serverAuth"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.3 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_risky_case_reports_expected_risks_in_severity_order"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-EKU-NOT-SERVER-AUTH",
+      "title": "证书扩展密钥用途不含 serverAuth",
+      "layer": "RISK",
+      "indicator_id": "NET-COMM-IDENTITY",
+      "tool_unit": "U07",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_purpose_risks",
+      "condition": "存在 certificate_extended_key_usage 且其中不含 required_eku",
+      "parameters": {
+        "severity": "HIGH",
+        "required_eku": "serverAuth"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.2 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_eku_without_server_auth_is_reported"
+      ]
+    },
+    {
+      "rule_id": "RISK-CERT-SAN-MISMATCH",
+      "title": "证书 SAN 与配置的 server_name 不匹配",
+      "layer": "RISK",
+      "indicator_id": "NET-COMM-IDENTITY",
+      "tool_unit": "U07",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.certificate_name_risks",
+      "condition": "configured_server_name 中存在未被证书 certificate_san_dns 覆盖的域名",
+      "parameters": {
+        "severity": "HIGH",
+        "wildcard_prefix": "*."
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.2 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_risky_case_reports_expected_risks_in_severity_order",
+        "tests/test_risk_engine.py::test_wildcard_san_covers_subdomain"
+      ]
+    },
+    {
+      "rule_id": "RISK-BINDING-UNKNOWN",
+      "title": "服务与证书的绑定未确认",
+      "layer": "RISK",
+      "indicator_id": "NET-COMM-IDENTITY",
+      "tool_unit": "U09",
+      "evaluation": "自动",
+      "engine_entry": "mvp_risk.rules.binding_risks",
+      "condition": "快照中存在 target_condition == \"binding\" 的缺口",
+      "parameters": {
+        "severity": "MEDIUM"
+      },
+      "standard_refs": [
+        "GB/T 39786-2021 8.2 a)（三级）"
+      ],
+      "tested_by": [
+        "tests/test_risk_engine.py::test_missing_binding_reports_binding_unknown"
+      ]
+    }
+  ]
+}

@@ -2,9 +2,9 @@
 
 These tests exercise :class:`mvp_decision.BundleVerifier` against real files in
 a temporary directory, using real SM3 digests computed with ``hashlib.new("sm3")``.
-They never depend on the sample snapshots' fabricated digests. The verifier is
-expected to check file integrity only: ``replay_status`` must stay ``FAIL`` even
-when integrity passes.
+They never depend on the sample snapshots' fabricated digests. These bundles
+contain no ``snapshot/`` or ``decisions/``, so replay legitimately fails with
+``E_REPLAY_INPUT_MISSING`` while integrity passes.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from mvp_decision.verifier import (
     E_BUNDLE_MANIFEST_MISSING,
     E_BUNDLE_NO_FILES,
     E_BUNDLE_PATH_ESCAPE,
-    E_REPLAY_NOT_IMPLEMENTED,
+    E_REPLAY_INPUT_MISSING,
     PLACEHOLDER_BUNDLE_ID,
 )
 
@@ -88,10 +88,11 @@ class BundleVerifierTest(unittest.TestCase):
 
             self.assertEqual(result.integrity_status, CheckStatus.PASS)
             self.assertEqual(result.bundle_id, "BND-TEST")
-            # Integrity passed, so the only recorded error is the replay one.
+            # 这个包没有 snapshot/decisions，重放只能报「缺输入」
             self.assertEqual(
-                [e.code for e in result.errors], [E_REPLAY_NOT_IMPLEMENTED]
+                [e.code for e in result.errors], [E_REPLAY_INPUT_MISSING]
             )
+            self.assertEqual(result.replay_status, CheckStatus.FAIL)
 
     def test_known_sm3_test_vector(self):
         with tempfile.TemporaryDirectory() as td:
@@ -104,7 +105,7 @@ class BundleVerifierTest(unittest.TestCase):
 
             self.assertEqual(result.integrity_status, CheckStatus.PASS)
 
-    def test_integrity_pass_but_replay_still_fails(self):
+    def test_replay_fails_when_snapshot_and_decisions_are_missing(self):
         with tempfile.TemporaryDirectory() as td:
             bundle = Path(td) / "bundle"
             bundle.mkdir()
@@ -115,8 +116,9 @@ class BundleVerifierTest(unittest.TestCase):
             result = BundleVerifier().verify(bundle)
 
             self.assertEqual(result.integrity_status, CheckStatus.PASS)
+            # 完整性通过，但没有可重放的输入——不能因为「没得比」就给 PASS
             self.assertEqual(result.replay_status, CheckStatus.FAIL)
-            self.assertTrue(any(e.code == E_REPLAY_NOT_IMPLEMENTED for e in result.errors))
+            self.assertTrue(any(e.code == E_REPLAY_INPUT_MISSING for e in result.errors))
 
     def test_missing_file_fails(self):
         with tempfile.TemporaryDirectory() as td:

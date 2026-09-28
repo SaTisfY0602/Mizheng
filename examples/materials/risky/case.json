@@ -1,0 +1,9 @@
+{
+  "project_id": "PRJ-003",
+  "environment": "PROD",
+  "asset_id": "APP-03",
+  "link_id": "LINK-03",
+  "evaluation_time": "2026-09-24T04:00:00Z",
+  "rule_version": "0.3.0-mvp",
+  "previous_snapshot_id": "NONE"
+}

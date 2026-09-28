@@ -13,6 +13,7 @@ evidence bundles, reports, or any generic rule language.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from mvp_contracts.models import (
@@ -22,13 +23,29 @@ from mvp_contracts.models import (
     EvidenceSnapshot,
     ReviewAction,
 )
+from mvp_rules import default_rule_set
 
 BINDING = "binding"
 CERTIFICATE_TIME = "certificate_time"
+KEY_STRENGTH = "key_strength"
+KEY_USAGE = "key_usage"
+EXTENDED_KEY_USAGE = "extended_key_usage"
 
 _PREDICATE_BINDING = "service_uses_certificate"
 _PREDICATE_TIME = "certificate_not_after"
 _PREDICATE_CONFIG_PATH = "configured_certificate_path"
+_PREDICATE_PUBLIC_KEY_ALGORITHM = "certificate_public_key_algorithm"
+_PREDICATE_PUBLIC_KEY_SIZE = "certificate_public_key_size"
+_PREDICATE_CURVE = "certificate_public_key_curve"
+_PREDICATE_KEY_USAGE = "certificate_key_usage"
+_PREDICATE_EXTENDED_KEY_USAGE = "certificate_extended_key_usage"
+
+RULE_KEY_STRENGTH = "DEC-CERT-KEY-STRENGTH"
+RULE_KEY_USAGE = "DEC-CERT-KEY-USAGE"
+
+#: 缺口条件名：证书缺少判定所需的字段事实（用途扩展或密钥强度）时，
+#: 由证据层在快照中记录该条件的缺口，判定据此停在待补证。
+CERTIFICATE_EVIDENCE = "certificate_evidence"
 
 
 class RuleEvaluationError(Exception):
@@ -235,14 +252,18 @@ def _collect_gap_ids(
     object_id: str,
     binding_state: ConditionState,
     anchor_key: tuple[str, str, str | None] | None,
+    *,
+    extra_conditions: tuple[str, ...] = (),
 ) -> list[str]:
     """收集对象适用范围内的既有缺口，保持快照中的原始顺序。
 
     缺口必须落在对象的唯一环境范围（``anchor_key``）内；其它环境/链路的缺口
     不能冒充本对象当前绑定证书的缺口。并按绑定状态区分缺口类型：绑定未知时只
-    引用 ``binding`` 缺口；绑定已确认时只引用 ``certificate_time`` 缺口——陈旧
-    的 ``binding`` 缺口不能顶替证书时间缺口。核验器不自行制造缺口。
+    引用 ``binding`` 缺口；绑定已确认时引用 ``certificate_time`` 缺口，以及本次
+    求值额外关心的条件缺口（如 ``certificate_purpose``）——陈旧的 ``binding``
+    缺口不能顶替它们。核验器不自行制造缺口。
     """
+    wanted = {CERTIFICATE_TIME, *extra_conditions}
     result: list[str] = []
     for gap in snapshot.gaps:
         if gap.scope.asset_id != object_id:
@@ -255,7 +276,243 @@ def _collect_gap_ids(
             result.append(gap.id)
         elif (
             binding_state is ConditionState.SUPPORTED
-            and gap.target_condition == CERTIFICATE_TIME
+            and gap.target_condition in wanted
         ):
             result.append(gap.id)
     return result
+
+
+# --------------------------------------------------------------------------- 判定侧规则
+#
+# 以下条件求值器复用上面的辅助函数（适用范围过滤、绑定有效性、缺口收集），
+# 因此「什么算绑定成立」「缺口怎样匹配对象」只有一份实现。每条条件独立返回
+# ``(状态, 支持事实, 缺口)``，由 :mod:`mvp_decision.engine` 按规则组合成 ``Decision``。
+#
+# 阈值（RSA 下限、弱曲线、必需 EKU）来自版本化规则包 ``mvp_rules``，与风险侧
+# 用的是同一份取值，避免判定说「符合」而风险说「密钥过短」这类自相矛盾。
+
+
+@dataclass(frozen=True)
+class EvaluatedConditions:
+    """一条判定规则的条件结果：状态 + 支持事实 + 缺口。"""
+
+    states: dict[str, ConditionState]
+    support_fact_ids: list[str]
+    gap_ids: list[str]
+
+
+def _object_conditions(
+    snapshot: EvidenceSnapshot,
+    object_id: str,
+    *,
+    include_certificate_time: bool = True,
+    extra_gap_conditions: tuple[str, ...] = (),
+) -> tuple[list[AdmittedFact], AdmittedFact | None, str | None, dict[str, ConditionState], list[str], list[str]]:
+    """所有判定规则共用的前半段：适用范围、对象范围、绑定。
+
+    返回 ``(适用事实, 绑定事实, 绑定证书 ID, 起始条件, 起始支持事实, 起始缺口)``。
+    绑定未成立时后四项已经是一个**完整的待补证结果**，调用方直接返回即可，不要
+    再去求后面的条件——否则会拿一份未绑定证书的属性冒充本对象的属性。
+    """
+    applicable = [
+        fact
+        for fact in snapshot.admitted_facts
+        if fact.scope.asset_id == object_id
+        and _applicable_at(fact.scope, snapshot.evaluation_time)
+    ]
+    anchor_key = _object_scope_key(snapshot, object_id, applicable)
+    binding_facts = _valid_binding_facts(snapshot, applicable, object_id)
+
+    if not binding_facts:
+        gap_ids = _collect_gap_ids(
+            snapshot, object_id, ConditionState.UNKNOWN, anchor_key
+        )
+        return applicable, None, None, {BINDING: ConditionState.UNKNOWN}, [], gap_ids
+
+    cert_ids = {fact.value for fact in binding_facts if isinstance(fact.value, str)}
+    if len(cert_ids) > 1:
+        raise ConflictingBindingError(
+            f"对象 {object_id} 存在多个互相矛盾的有效绑定，指向不同证书：{sorted(cert_ids)}"
+        )
+    bound_cert_id = str(next(iter(cert_ids)))
+
+    binding_evidence = {fact.id for fact in binding_facts}
+    for fact in applicable:
+        if fact.predicate == _PREDICATE_CONFIG_PATH:
+            binding_evidence.add(fact.id)
+    support = [fact.id for fact in snapshot.admitted_facts if fact.id in binding_evidence]
+    gap_ids = _collect_gap_ids(
+        snapshot,
+        object_id,
+        ConditionState.SUPPORTED,
+        anchor_key,
+        extra_conditions=extra_gap_conditions,
+    )
+    states: dict[str, ConditionState] = {BINDING: ConditionState.SUPPORTED}
+
+    if include_certificate_time:
+        time_fact = _find_time_fact(applicable, binding_facts[0], bound_cert_id)
+        if time_fact is None:
+            states[CERTIFICATE_TIME] = ConditionState.UNKNOWN
+        else:
+            states[CERTIFICATE_TIME] = (
+                ConditionState.SUPPORTED
+                if _parse_not_after(time_fact) > snapshot.evaluation_time
+                else ConditionState.REFUTED
+            )
+            support.append(time_fact.id)
+    return applicable, binding_facts[0], bound_cert_id, states, support, gap_ids
+
+
+def _ordered(snapshot: EvidenceSnapshot, fact_ids: list[str]) -> list[str]:
+    """按快照中的原始顺序重排支持事实，保证相同输入得到相同输出。"""
+    wanted = set(fact_ids)
+    return [fact.id for fact in snapshot.admitted_facts if fact.id in wanted]
+
+
+def evaluate_certificate_key_strength(
+    snapshot: EvidenceSnapshot, object_id: str
+) -> EvaluatedConditions:
+    """判断绑定证书的公钥强度是否满足最低要求。
+
+    * RSA：密钥长度低于 ``min_rsa_key_size`` 判 ``REFUTED``；
+    * 非 RSA（例如 SM2/EC）：按 ``weak_curves`` 判定；
+    * 公钥信息未准入：``UNKNOWN``——缺证据不等于不符合。
+    """
+    (
+        applicable,
+        _binding_fact,
+        bound_cert_id,
+        states,
+        support,
+        gap_ids,
+    ) = _object_conditions(
+        snapshot,
+        object_id,
+        include_certificate_time=False,
+        extra_gap_conditions=(CERTIFICATE_EVIDENCE,),
+    )
+
+    if bound_cert_id is None:
+        return EvaluatedConditions(states, _ordered(snapshot, support), gap_ids)
+
+    pack = default_rule_set()
+    key_algorithm = _fact_for(applicable, bound_cert_id, _PREDICATE_PUBLIC_KEY_ALGORITHM)
+    key_size = _fact_for(applicable, bound_cert_id, _PREDICATE_PUBLIC_KEY_SIZE)
+    if key_algorithm is None or key_size is None:
+        states[KEY_STRENGTH] = ConditionState.UNKNOWN
+        if key_algorithm is not None:
+            support.append(key_algorithm.id)
+        if key_size is not None:
+            support.append(key_size.id)
+        return EvaluatedConditions(states, _ordered(snapshot, support), gap_ids)
+
+    support.extend([key_algorithm.id, key_size.id])
+    if str(key_algorithm.value) == pack.param(RULE_KEY_STRENGTH, "rsa_algorithm_name"):
+        try:
+            bits = int(key_size.value)
+        except (TypeError, ValueError):
+            states[KEY_STRENGTH] = ConditionState.UNKNOWN
+            return EvaluatedConditions(states, _ordered(snapshot, support), gap_ids)
+        minimum = pack.int_param(RULE_KEY_STRENGTH, "min_rsa_key_size")
+        states[KEY_STRENGTH] = (
+            ConditionState.REFUTED if bits < minimum else ConditionState.SUPPORTED
+        )
+        return EvaluatedConditions(states, _ordered(snapshot, support), gap_ids)
+
+    weak_curves = pack.str_tuple_param(RULE_KEY_STRENGTH, "weak_curves")
+    curve = _fact_for(applicable, bound_cert_id, _PREDICATE_CURVE)
+    if curve is None:
+        # 非 RSA 但没有曲线事实：无法判断强度，保持 UNKNOWN 而不是默许通过。
+        states[KEY_STRENGTH] = ConditionState.UNKNOWN
+        return EvaluatedConditions(states, _ordered(snapshot, support), gap_ids)
+    support.append(curve.id)
+    states[KEY_STRENGTH] = (
+        ConditionState.REFUTED
+        if str(curve.value) in weak_curves
+        else ConditionState.SUPPORTED
+    )
+    return EvaluatedConditions(states, _ordered(snapshot, support), gap_ids)
+
+
+def evaluate_certificate_purpose(
+    snapshot: EvidenceSnapshot, object_id: str
+) -> EvaluatedConditions:
+    """判断绑定证书是否声明了可用于服务端身份鉴别的用途。
+
+    * ExtendedKeyUsage 不含 ``required_eku`` 判 ``REFUTED``；
+    * keyUsage 与要求项完全不相交判 ``REFUTED``；
+    * 两个扩展都缺失判 ``UNKNOWN``——证书没写用途不等于用途不合规。
+    """
+    (
+        applicable,
+        _binding_fact,
+        bound_cert_id,
+        states,
+        support,
+        gap_ids,
+    ) = _object_conditions(
+        snapshot,
+        object_id,
+        include_certificate_time=False,
+        extra_gap_conditions=(CERTIFICATE_EVIDENCE,),
+    )
+
+    if bound_cert_id is None:
+        return EvaluatedConditions(states, _ordered(snapshot, support), gap_ids)
+
+    pack = default_rule_set()
+    required_eku = pack.param(RULE_KEY_USAGE, "required_eku")
+    key_usage = _fact_for(applicable, bound_cert_id, _PREDICATE_KEY_USAGE)
+    extended = _fact_for(applicable, bound_cert_id, _PREDICATE_EXTENDED_KEY_USAGE)
+
+    if key_usage is None and extended is None:
+        states[KEY_USAGE] = ConditionState.UNKNOWN
+        states[EXTENDED_KEY_USAGE] = ConditionState.UNKNOWN
+        return EvaluatedConditions(states, _ordered(snapshot, support), gap_ids)
+
+    if key_usage is None:
+        states[KEY_USAGE] = ConditionState.UNKNOWN
+    else:
+        support.append(key_usage.id)
+        allowed = _string_list(key_usage.value)
+        required_usages = [
+            list(group)
+            for group in pack.param(RULE_KEY_USAGE, "key_usage_alternatives")
+        ]
+        states[KEY_USAGE] = (
+            ConditionState.SUPPORTED
+            if any(set(group) & allowed for group in required_usages)
+            else ConditionState.REFUTED
+        )
+
+    if extended is None:
+        states[EXTENDED_KEY_USAGE] = ConditionState.UNKNOWN
+    else:
+        support.append(extended.id)
+        states[EXTENDED_KEY_USAGE] = (
+            ConditionState.SUPPORTED
+            if required_eku in _string_list(extended.value)
+            else ConditionState.REFUTED
+        )
+    return EvaluatedConditions(states, _ordered(snapshot, support), gap_ids)
+
+
+def _fact_for(
+    applicable: list[AdmittedFact], certificate_id: str, predicate: str
+) -> AdmittedFact | None:
+    """取指定证书在适用范围内的事实；同名谓词取最后一条。"""
+    matched = [
+        fact
+        for fact in applicable
+        if fact.artifact_id == certificate_id and fact.predicate == predicate
+    ]
+    return matched[-1] if matched else None
+
+
+def _string_list(value: object) -> set[str]:
+    if isinstance(value, list):
+        return {str(item) for item in value}
+    if isinstance(value, str):
+        return {value}
+    return set()
