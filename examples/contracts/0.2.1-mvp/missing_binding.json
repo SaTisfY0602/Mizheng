@@ -1,0 +1,371 @@
+{
+  "artifacts": [
+    {
+      "schema_version": "0.2.1-mvp",
+      "id": "EVD-CONF-002",
+      "project_id": "PRJ-002",
+      "kind": "CONFIG",
+      "format": "NGINX_CONF",
+      "original_name": "nginx.conf",
+      "sm3": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "byte_size": 96,
+      "storage_key": "PRJ-002/EVD-CONF-002",
+      "imported_at": "2026-09-24T03:00:00Z"
+    },
+    {
+      "schema_version": "0.2.1-mvp",
+      "id": "EVD-CERT-002",
+      "project_id": "PRJ-002",
+      "kind": "CERTIFICATE",
+      "format": "X509_DER",
+      "original_name": "unbound.der",
+      "sm3": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "byte_size": 430,
+      "storage_key": "PRJ-002/EVD-CERT-002",
+      "imported_at": "2026-09-24T03:01:00Z"
+    }
+  ],
+  "parse_requests": [
+    {
+      "schema_version": "0.2.1-mvp",
+      "artifact": {
+        "schema_version": "0.2.1-mvp",
+        "id": "EVD-CONF-002",
+        "project_id": "PRJ-002",
+        "kind": "CONFIG",
+        "format": "NGINX_CONF",
+        "original_name": "nginx.conf",
+        "sm3": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "byte_size": 96,
+        "storage_key": "PRJ-002/EVD-CONF-002",
+        "imported_at": "2026-09-24T03:00:00Z"
+      },
+      "scope": {
+        "project_id": "PRJ-002",
+        "environment": "PROD",
+        "asset_id": "APP-02",
+        "link_id": "LINK-02",
+        "as_of": "2026-09-24T03:00:00Z",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "parser_version": "nginx-0.2.0"
+    },
+    {
+      "schema_version": "0.2.1-mvp",
+      "artifact": {
+        "schema_version": "0.2.1-mvp",
+        "id": "EVD-CERT-002",
+        "project_id": "PRJ-002",
+        "kind": "CERTIFICATE",
+        "format": "X509_DER",
+        "original_name": "unbound.der",
+        "sm3": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "byte_size": 430,
+        "storage_key": "PRJ-002/EVD-CERT-002",
+        "imported_at": "2026-09-24T03:01:00Z"
+      },
+      "scope": {
+        "project_id": "PRJ-002",
+        "environment": "PROD",
+        "asset_id": null,
+        "link_id": null,
+        "as_of": "2026-09-24T03:00:00Z",
+        "valid_from": null,
+        "valid_to": null
+      },
+      "parser_version": "x509-0.2.0"
+    }
+  ],
+  "parse_results": [
+    {
+      "schema_version": "0.2.1-mvp",
+      "artifact_id": "EVD-CONF-002",
+      "status": "SUCCEEDED",
+      "coverage": "COMPLETE",
+      "candidates": [
+        {
+          "schema_version": "0.2.1-mvp",
+          "id": "CAND-PATH-002",
+          "artifact_id": "EVD-CONF-002",
+          "anchor": {
+            "artifact_id": "EVD-CONF-002",
+            "kind": "CONFIG_LINE",
+            "quote": "ssl_certificate unknown.pem;",
+            "line_number": 18,
+            "field_path": null
+          },
+          "predicate": "configured_certificate_path",
+          "value": "unknown.pem",
+          "scope": {
+            "project_id": "PRJ-002",
+            "environment": "PROD",
+            "asset_id": "APP-02",
+            "link_id": "LINK-02",
+            "as_of": "2026-09-24T03:00:00Z",
+            "valid_from": null,
+            "valid_to": null
+          },
+          "evidence_level": "CONFIGURED",
+          "parser_version": "nginx-0.2.0"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "schema_version": "0.2.1-mvp",
+      "artifact_id": "EVD-CERT-002",
+      "status": "SUCCEEDED",
+      "coverage": "COMPLETE",
+      "candidates": [
+        {
+          "schema_version": "0.2.1-mvp",
+          "id": "CAND-TIME-002",
+          "artifact_id": "EVD-CERT-002",
+          "anchor": {
+            "artifact_id": "EVD-CERT-002",
+            "kind": "CERT_FIELD",
+            "quote": "2026-12-31T23:59:59Z",
+            "line_number": null,
+            "field_path": "validity.not_after"
+          },
+          "predicate": "certificate_not_after",
+          "value": "2026-12-31T23:59:59Z",
+          "scope": {
+            "project_id": "PRJ-002",
+            "environment": "PROD",
+            "asset_id": null,
+            "link_id": null,
+            "as_of": "2026-09-24T03:00:00Z",
+            "valid_from": null,
+            "valid_to": null
+          },
+          "evidence_level": "CERTIFICATE",
+          "parser_version": "x509-0.2.0"
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "review_events": [
+    {
+      "schema_version": "0.2.1-mvp",
+      "id": "REV-REQ-002",
+      "project_id": "PRJ-002",
+      "previous_snapshot_id": "FS-002",
+      "action": "REQUEST_EVIDENCE",
+      "target_candidate_id": "CAND-PATH-002",
+      "confirmed_asset_id": null,
+      "actor_id": "USR-002",
+      "reason": "请求当前服务的证书绑定记录",
+      "occurred_at": "2026-09-24T03:10:00Z"
+    }
+  ],
+  "snapshots": [
+    {
+      "schema_version": "0.2.1-mvp",
+      "id": "FS-002",
+      "project_id": "PRJ-002",
+      "evaluation_time": "2026-09-24T03:00:00Z",
+      "rule_version": "demo-0.2.0",
+      "artifacts": [
+        {
+          "schema_version": "0.2.1-mvp",
+          "id": "EVD-CONF-002",
+          "project_id": "PRJ-002",
+          "kind": "CONFIG",
+          "format": "NGINX_CONF",
+          "original_name": "nginx.conf",
+          "sm3": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "byte_size": 96,
+          "storage_key": "PRJ-002/EVD-CONF-002",
+          "imported_at": "2026-09-24T03:00:00Z"
+        },
+        {
+          "schema_version": "0.2.1-mvp",
+          "id": "EVD-CERT-002",
+          "project_id": "PRJ-002",
+          "kind": "CERTIFICATE",
+          "format": "X509_DER",
+          "original_name": "unbound.der",
+          "sm3": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "byte_size": 430,
+          "storage_key": "PRJ-002/EVD-CERT-002",
+          "imported_at": "2026-09-24T03:01:00Z"
+        }
+      ],
+      "candidates": [
+        {
+          "schema_version": "0.2.1-mvp",
+          "id": "CAND-PATH-002",
+          "artifact_id": "EVD-CONF-002",
+          "anchor": {
+            "artifact_id": "EVD-CONF-002",
+            "kind": "CONFIG_LINE",
+            "quote": "ssl_certificate unknown.pem;",
+            "line_number": 18,
+            "field_path": null
+          },
+          "predicate": "configured_certificate_path",
+          "value": "unknown.pem",
+          "scope": {
+            "project_id": "PRJ-002",
+            "environment": "PROD",
+            "asset_id": "APP-02",
+            "link_id": "LINK-02",
+            "as_of": "2026-09-24T03:00:00Z",
+            "valid_from": null,
+            "valid_to": null
+          },
+          "evidence_level": "CONFIGURED",
+          "parser_version": "nginx-0.2.0"
+        },
+        {
+          "schema_version": "0.2.1-mvp",
+          "id": "CAND-TIME-002",
+          "artifact_id": "EVD-CERT-002",
+          "anchor": {
+            "artifact_id": "EVD-CERT-002",
+            "kind": "CERT_FIELD",
+            "quote": "2026-12-31T23:59:59Z",
+            "line_number": null,
+            "field_path": "validity.not_after"
+          },
+          "predicate": "certificate_not_after",
+          "value": "2026-12-31T23:59:59Z",
+          "scope": {
+            "project_id": "PRJ-002",
+            "environment": "PROD",
+            "asset_id": null,
+            "link_id": null,
+            "as_of": "2026-09-24T03:00:00Z",
+            "valid_from": null,
+            "valid_to": null
+          },
+          "evidence_level": "CERTIFICATE",
+          "parser_version": "x509-0.2.0"
+        }
+      ],
+      "admitted_facts": [
+        {
+          "schema_version": "0.2.1-mvp",
+          "id": "FACT-PATH-002",
+          "candidate_id": "CAND-PATH-002",
+          "artifact_id": "EVD-CONF-002",
+          "anchor": {
+            "artifact_id": "EVD-CONF-002",
+            "kind": "CONFIG_LINE",
+            "quote": "ssl_certificate unknown.pem;",
+            "line_number": 18,
+            "field_path": null
+          },
+          "predicate": "configured_certificate_path",
+          "value": "unknown.pem",
+          "scope": {
+            "project_id": "PRJ-002",
+            "environment": "PROD",
+            "asset_id": "APP-02",
+            "link_id": "LINK-02",
+            "as_of": "2026-09-24T03:00:00Z",
+            "valid_from": null,
+            "valid_to": null
+          },
+          "evidence_level": "CONFIGURED",
+          "admission_reason": "配置字段来源有效，但仅证明配置了路径",
+          "review_event_id": null
+        }
+      ],
+      "gaps": [
+        {
+          "schema_version": "0.2.1-mvp",
+          "id": "GAP-BIND-002",
+          "target_condition": "binding",
+          "reason_code": "MISSING_BINDING",
+          "scope": {
+            "project_id": "PRJ-002",
+            "environment": "PROD",
+            "asset_id": "APP-02",
+            "link_id": "LINK-02",
+            "as_of": "2026-09-24T03:00:00Z",
+            "valid_from": null,
+            "valid_to": null
+          },
+          "description": "缺少证明 APP-02 当前使用 EVD-CERT-002 的绑定记录"
+        }
+      ],
+      "review_events": [],
+      "errors": []
+    }
+  ],
+  "decisions": [
+    {
+      "schema_version": "0.2.1-mvp",
+      "id": "DEC-002",
+      "snapshot_id": "FS-002",
+      "rule_id": "DEMO-BIND-TIME",
+      "rule_version": "demo-0.2.0",
+      "object_id": "APP-02",
+      "condition_states": {
+        "binding": "UNKNOWN",
+        "certificate_time": "UNKNOWN"
+      },
+      "possible_labels": [
+        "COMPLIANT",
+        "PARTIALLY_COMPLIANT"
+      ],
+      "proposed_label": null,
+      "workflow_status": "PENDING_EVIDENCE",
+      "support_fact_ids": [
+        "FACT-PATH-002"
+      ],
+      "gap_ids": [
+        "GAP-BIND-002"
+      ]
+    }
+  ],
+  "reports": [
+    {
+      "schema_version": "0.2.1-mvp",
+      "id": "RPT-002",
+      "snapshot_id": "FS-002",
+      "decision_ids": [
+        "DEC-002"
+      ],
+      "unresolved_decision_ids": [
+        "DEC-002"
+      ],
+      "file_name": "assessment-draft.json",
+      "sm3": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "created_at": "2026-09-24T03:15:00Z"
+    }
+  ],
+  "bundles": [
+    {
+      "schema_version": "0.2.1-mvp",
+      "id": "BND-002",
+      "snapshot_id": "FS-002",
+      "rule_version": "demo-0.2.0",
+      "decision_ids": [
+        "DEC-002"
+      ],
+      "report_id": "RPT-002",
+      "files": {
+        "artifacts/nginx.conf": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "artifacts/unbound.der": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "assessment-draft.json": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "created_at": "2026-09-24T03:16:00Z",
+      "rule_sm3": "820247e4b32d96e5faca7733793f7c41bb0e5a8b7465f30313ebc790c20dca62"
+    }
+  ],
+  "verification_results": [
+    {
+      "schema_version": "0.2.1-mvp",
+      "bundle_id": "BND-002",
+      "integrity_status": "PASS",
+      "replay_status": "PASS",
+      "errors": []
+    }
+  ],
+  "schema_version": "0.2.1-mvp"
+}

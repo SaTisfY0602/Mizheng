@@ -6,6 +6,8 @@
 * ``manifest.files`` 覆盖证据包内**除 manifest.json 本身以外**的全部文件
   —— 既不产生循环摘要，也不漏保护文件；
 * 键是 POSIX 风格的包内相对路径，值是文件的**真实 SM3**（分块读取计算）；
+* ``BundleManifest.rule_sm3`` 记录本次运行**真实使用**的规则包摘要（对规则数据
+  文件按名排序求 SM3），核验端据此判断规则实现是否仍是产出该包时的那一套；
 * ``BundleManifest.id`` 由注入的 ``IdAllocator`` 生成，核验器据此回填
   ``VerifyResult.bundle_id``，与占位值 ``UNKNOWN_BUNDLE_ID`` 区分开；
 * 本轮只支持**目录**形式的证据包，归档（zip）留待后续版本；
@@ -27,6 +29,7 @@ from mvp_contracts.models import (
     EvidenceSnapshot,
     ReportArtifact,
 )
+from mvp_rules import rule_pack_sm3
 
 from .digest import sm3_of_file
 from .report import Clock, utc_now
@@ -87,6 +90,9 @@ class BundleExporter:
             ),
             snapshot_id=snapshot.id,
             rule_version=report_rule_version(snapshot),
+            # 本次运行**真实使用**的规则包摘要，不是占位值：核验端据此判断规则是否
+            # 仍是产出该包时的那一套，不一致就拒绝重放。
+            rule_sm3=rule_pack_sm3(),
             decision_ids=[decision.id for decision in decisions],
             report_id=report.id,
             files=files,

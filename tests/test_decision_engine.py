@@ -30,7 +30,7 @@ from mvp_decision.rules import AmbiguousScopeError, ConflictingBindingError, Unp
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXAMPLES = ROOT / "examples" / "contracts" / "0.2.0-mvp"
+EXAMPLES = ROOT / "examples" / "contracts" / "0.2.1-mvp"
 
 
 class _RecordingIdAllocator:

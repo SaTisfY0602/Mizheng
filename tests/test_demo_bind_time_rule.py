@@ -24,7 +24,7 @@ from mvp_decision.rules import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXAMPLES = ROOT / "examples" / "contracts" / "0.2.0-mvp"
+EXAMPLES = ROOT / "examples" / "contracts" / "0.2.1-mvp"
 
 
 def _load_snapshot(name: str) -> EvidenceSnapshot:

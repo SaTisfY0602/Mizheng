@@ -31,6 +31,7 @@ from mvp_contracts.models import (
 )
 
 from .engine import DecisionEngine
+from mvp_rules import default_rule_set, rule_pack_sm3
 
 MANIFEST_NAME = "manifest.json"
 PLACEHOLDER_BUNDLE_ID = "UNKNOWN_BUNDLE_ID"
@@ -50,6 +51,8 @@ E_REPLAY_BUNDLE_INCOMPLETE = "E_REPLAY_BUNDLE_INCOMPLETE"
 E_REPLAY_INPUT_MISSING = "E_REPLAY_INPUT_MISSING"
 E_REPLAY_FAILED = "E_REPLAY_FAILED"
 E_REPLAY_MISMATCH = "E_REPLAY_MISMATCH"
+# 规则指纹不符：清单记录的规则版本或摘要与当前安装环境不一致，拒绝重放
+E_REPLAY_RULE_MISMATCH = "E_REPLAY_RULE_MISMATCH"
 
 _CHUNK_SIZE = 1024 * 1024  # 1 MiB 分块读取，避免把大文件整体载入内存
 
@@ -82,7 +85,7 @@ class BundleVerifier:
         errors.extend(replay_errors)
 
         return VerifyResult(
-            schema_version="0.2.0-mvp",
+            schema_version="0.2.1-mvp",
             bundle_id=bundle_id,
             integrity_status=integrity_status,
             replay_status=replay_status,
@@ -243,6 +246,13 @@ def _replay(
     判定 ID 是重新分配的，因此比对忽略 ID，只比对象、条件状态、可能结论、建议标签、
     工作流状态、支持事实与缺口引用。
     """
+    # 规则指纹先于一切重放动作核对：清单记录的规则版本与摘要必须仍是**安装环境里
+    # 这一套**。放在输入检查之前，是因为这是环境级问题——哪怕包本身不完整，也应该
+    # 先告诉核验者「你手上的规则不对」，而不是让他去查包的输入。
+    mismatch = _check_rule_fingerprint(manifest)
+    if mismatch is not None:
+        return CheckStatus.FAIL, [mismatch]
+
     snapshot = _load_snapshot(bundle_path, manifest)
     if snapshot is None:
         return CheckStatus.FAIL, [
@@ -260,7 +270,8 @@ def _replay(
             schema_version=snapshot.schema_version,
             id="RP-REPLAY",
             version=snapshot.rule_version,
-            sm3="0" * 64,
+            # 用当前安装环境的真实规则摘要构造，而不是占位值。
+            sm3=rule_pack_sm3(),
             rule_ids=sorted({decision.rule_id for decision in recorded}),
         )
         replayed = DecisionEngine(_ReplayIdAllocator()).evaluate(snapshot, rule_pack)
@@ -280,6 +291,33 @@ def _replay(
             )
         ]
     return CheckStatus.PASS, []
+
+
+def _check_rule_fingerprint(manifest: BundleManifest) -> ErrorItem | None:
+    """核对清单里的规则版本与真实摘要；不一致返回错误，一致返回 ``None``。
+
+    两条都要核，理由不同：
+
+    * ``rule_version`` 说明这批判定是按哪一版规则口径做的；当前规则包不接受的
+      版本无法重放。
+    * ``rule_sm3`` 说明规则**内容**没被换过；只比版本号挡不住「版本号没动但规则
+      文件被改」这种情况。
+    """
+    rule_set = default_rule_set()
+    if manifest.rule_version not in rule_set.accepted_versions:
+        return _error(
+            E_REPLAY_RULE_MISMATCH,
+            f"证据包记录的规则版本 {manifest.rule_version} 不在当前规则包接受的版本集合 "
+            f"{sorted(rule_set.accepted_versions)} 内，无法确认重放口径",
+        )
+    current = rule_pack_sm3(rule_set)
+    if manifest.rule_sm3 != current:
+        return _error(
+            E_REPLAY_RULE_MISMATCH,
+            f"规则包内容与证据包记录不一致：包内 rule_sm3={manifest.rule_sm3[:12]}…，"
+            f"当前规则包={current[:12]}…；规则实现已变更，拒绝用新规则重放旧包",
+        )
+    return None
 
 
 class _ReplayIdAllocator:

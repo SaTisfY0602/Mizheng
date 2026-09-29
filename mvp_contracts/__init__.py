@@ -1,4 +1,4 @@
-"""Shared 0.2.0-mvp hand-off contracts for the three workstreams."""
+"""Shared 0.2.1-mvp hand-off contracts for the three workstreams."""
 
 from .models import (
     AdmittedFact,

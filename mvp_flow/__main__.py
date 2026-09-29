@@ -1,13 +1,17 @@
 """统一运行入口。
 
 ```text
-.venv\\Scripts\\python.exe -m mvp_flow complete
-.venv\\Scripts\\python.exe -m mvp_flow missing_binding
-.venv\\Scripts\\python.exe -m mvp_flow --all
+# 仓库预置样例
+.venv\\Scripts\\python.exe -m mvp_flow complete --mode real
+.venv\\Scripts\\python.exe -m mvp_flow --all --mode real
+
+# 外部案例目录（非预置输入）
+.venv\\Scripts\\python.exe -m mvp_flow my-case --mode real --case-dir D:\\cases\\my-case
 ```
 
-两组样例走同一条链路、同一个入口；每个阶段的实现性质（真实/替身）和成败都会打印
-出来，同时落盘到 ``results/<样例名>/run-record.json``。
+每次运行落在 ``<输出根>/<案例名>/runs/<run_id>/``，带自己的
+``run-record.json``；不同运行不互相覆盖。默认输出根是仓库下的 ``results/``，
+验收时建议用 ``--out`` 指到一个新的空目录。
 """
 
 from __future__ import annotations
@@ -41,8 +45,18 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.all and args.case:
         parser.error("--all 与具体样例名不能同时使用")
+    if args.all and args.case_dir:
+        parser.error("--all 只跑仓库预置样例，不能与 --case-dir 同时使用")
     if not args.all and not args.case:
         parser.error("请指定样例名，或使用 --all")
+    if args.case_dir:
+        if args.mode != MODE_REAL:
+            parser.error("--case-dir 只在 --mode real 下支持")
+    elif args.case and args.case not in (set(CASE_FILES) | set(REAL_CASES)):
+        allowed = sorted(set(CASE_FILES) | set(REAL_CASES))
+        parser.error(
+            f"未知样例 {args.case!r}；仓库预置样例为 {allowed}，外部案例请配合 --case-dir 使用"
+        )
 
     try:
         now = utc_from_iso(args.now) if args.now else None
@@ -50,10 +64,28 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(str(exc))
 
     output_root = Path(args.out).resolve() if args.out else None
-    if args.all:
-        records = run_all(output_root=output_root, now=now, mode=args.mode)
-    else:
-        records = [run_case(args.case, output_root=output_root, now=now, mode=args.mode)]
+    case_source = Path(args.case_dir).resolve() if args.case_dir else None
+    try:
+        if args.all:
+            records = run_all(
+                output_root=output_root,
+                now=now,
+                mode=args.mode,
+                run_id=args.run_id,
+            )
+        else:
+            records = [
+                run_case(
+                    args.case,
+                    output_root=output_root,
+                    case_source_dir=case_source,
+                    run_id=args.run_id,
+                    now=now,
+                    mode=args.mode,
+                )
+            ]
+    except ValueError as exc:
+        parser.error(str(exc))
 
     for record in records:
         _print_record(record)
@@ -64,23 +96,39 @@ def main(argv: list[str] | None = None) -> int:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m mvp_flow",
-        description="统一运行入口：按同一链路处理契约样例，输出报告、证据包和运行记录。",
+        description="统一运行入口：按同一链路处理案例，输出报告、证据包和运行记录。",
     )
     parser.add_argument(
         "case",
         nargs="?",
-        choices=sorted(set(CASE_FILES) | set(REAL_CASES)),
-        help="样例名（fixture 模式仅支持 %s；real 模式支持 %s）"
-        % (", ".join(CONTRACT_CASES), ", ".join(REAL_CASES)),
+        help="案例名。用仓库预置样例时取 %s（real）或 %s（fixture）；"
+        "配合 --case-dir 时可自取一个名字。"
+        % (", ".join(REAL_CASES), ", ".join(CONTRACT_CASES)),
     )
-    parser.add_argument("--all", action="store_true", help="按固定顺序跑完两组样例")
+    parser.add_argument("--all", action="store_true", help="按固定顺序跑完仓库预置样例")
     parser.add_argument(
         "--mode",
         choices=[MODE_FIXTURE, MODE_REAL],
         default=MODE_FIXTURE,
-        help="fixture=读契约样例快照（替身）；real=解析 examples/materials 下的真实材料",
+        help="fixture=读契约样例快照（替身）；real=解析真实材料（预置目录或 --case-dir）",
     )
-    parser.add_argument("--out", metavar="DIR", help="输出根目录（默认仓库下的 results/）")
+    parser.add_argument(
+        "--case-dir",
+        metavar="DIR",
+        help="外部案例目录（只读）：目录内放 case.json、可选 review_events.json 与材料文件，"
+        "需配合 --mode real。案例名由位置参数给出。",
+    )
+    parser.add_argument(
+        "--out",
+        metavar="DIR",
+        help="输出根目录（默认仓库下的 results/）。产物落在 <DIR>/<案例名>/runs/<run_id>/",
+    )
+    parser.add_argument(
+        "--run-id",
+        metavar="NAME",
+        help="运行标识（默认取本次执行时钟）。同一标识重复运行是幂等复现；"
+        "不同标识落在不同目录，互不覆盖。",
+    )
     parser.add_argument(
         "--now",
         metavar="ISO8601",

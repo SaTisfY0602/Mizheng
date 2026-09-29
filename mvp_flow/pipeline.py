@@ -59,7 +59,7 @@ from .report import Clock, ReportBuilder, ReportBuildResult, utc_now
 from .storage import MaterialStore
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_EXAMPLES_DIR = PROJECT_ROOT / "examples" / "contracts" / "0.2.0-mvp"
+DEFAULT_EXAMPLES_DIR = PROJECT_ROOT / "examples" / "contracts" / "0.2.1-mvp"
 DEFAULT_MATERIALS_DIR = PROJECT_ROOT / "examples" / "materials"
 DEFAULT_RESULTS_DIR = PROJECT_ROOT / "results"
 
@@ -78,7 +78,7 @@ CASE_DESCRIPTIONS = {
     "risky": "故意启用弱协议、弱套件并使用弱签名/短密钥/临期证书，用于验证风险识别",
 }
 
-INTERFACE_VERSION = "0.2.0-mvp"
+INTERFACE_VERSION = "0.2.1-mvp"
 # 默认判定规则取规则包声明的 DECISION 层；真实值在 _build_rule_pack 里由规则包解析。
 RULE_ID = "DEC-BIND-TIME"
 
@@ -87,6 +87,9 @@ X509_PARSER_VERSION = "x509-0.2.0"
 
 MODE_FIXTURE = "fixture"
 MODE_REAL = "real"
+
+#: 一次运行的完成标记文件：它存在即表示该运行目录已交付，不得被静默覆盖。
+RUN_RECORD_NAME = "run-record.json"
 
 # 实现性质
 REAL = "REAL"
@@ -199,14 +202,36 @@ def run_case(
     output_root: Path | None = None,
     examples_dir: Path | None = None,
     materials_dir: Path | None = None,
+    case_source_dir: Path | None = None,
+    run_id: str | None = None,
     now: datetime | None = None,
     id_allocator: IdAllocator | None = None,
     mode: str = MODE_FIXTURE,
 ) -> RunRecord:
-    """跑通一个样例的完整链路，任何阶段失败都如实记录且不再往下走。"""
-    known_cases = sorted(set(CASE_FILES) | set(REAL_CASES))
-    if case_name not in known_cases:
-        raise ValueError(f"未知样例 {case_name!r}，可选：{known_cases}")
+    """跑通一个样例的完整链路，任何阶段失败都如实记录且不再往下走。
+
+    案例来源有两种，二者互斥：
+
+    * **仓库预置样例**（``examples/materials/<样例名>/``）——默认；
+    * **外部案例目录**（``case_source_dir``）——成员三为冲刺新增。目录名不参与
+      命名，案例名由调用方给定；目录里放 ``case.json``、可选
+      ``review_events.json``，以及本轮支持的配置与证书文件。
+
+    运行产物写到 ``<output_root>/<案例名>/runs/<run_id>/``。每次运行有独立的
+    运行目录，**不会覆盖历史运行**；``run_id`` 缺省取本次执行时钟。
+    """
+    external = case_source_dir is not None
+    if external:
+        if mode != MODE_REAL:
+            raise ValueError("外部案例目录只在 real 模式下支持：请加 --mode real")
+        if not case_name.strip():
+            raise ValueError("外部案例必须给出案例名")
+        if any(part in {"", ".", ".."} for part in _safe_parts(case_name)):
+            raise ValueError(f"案例名不能包含路径分隔符：{case_name!r}")
+    else:
+        known_cases = sorted(set(CASE_FILES) | set(REAL_CASES))
+        if case_name not in known_cases:
+            raise ValueError(f"未知样例 {case_name!r}，可选：{known_cases}")
     if mode not in {MODE_FIXTURE, MODE_REAL}:
         raise ValueError(f"未知运行模式 {mode!r}，可选：{MODE_FIXTURE} / {MODE_REAL}")
     if mode == MODE_FIXTURE and case_name not in CASE_FILES:
@@ -215,12 +240,23 @@ def run_case(
         )
 
     examples = Path(examples_dir) if examples_dir is not None else DEFAULT_EXAMPLES_DIR
-    materials = Path(materials_dir) if materials_dir is not None else DEFAULT_MATERIALS_DIR
+    if external:
+        external_root = Path(case_source_dir)
+        if not external_root.is_dir():
+            raise ValueError(f"外部案例目录不存在：{external_root}")
+        case_root: Path | None = external_root.resolve()
+    else:
+        materials = (
+            Path(materials_dir) if materials_dir is not None else DEFAULT_MATERIALS_DIR
+        )
+        case_root = None
     results_root = Path(output_root) if output_root is not None else DEFAULT_RESULTS_DIR
-    case_dir = results_root / case_name
     clock: Clock = _fixed_clock(now) if now is not None else utc_now
     allocator = id_allocator if id_allocator is not None else IdAllocator()
     started_at = clock()
+    resolved_run_id = run_id if run_id is not None else _default_run_id(clock)
+    case_dir = results_root / case_name / "runs" / resolved_run_id
+    _prepare_run_dir(case_dir)
     plan = _REAL_STAGES if mode == MODE_REAL else _FIXTURE_STAGES
 
     stages: list[StageRecord] = []
@@ -240,7 +276,15 @@ def run_case(
 
     # 1) 载入材料与证据快照
     if mode == MODE_REAL:
-        prepared = _prepare_real(case_name, materials, case_dir, clock, allocator, add, fail)
+        prepared = _prepare_real(
+            case_name,
+            case_root if case_root is not None else materials / case_name,
+            case_dir,
+            clock,
+            allocator,
+            add,
+            fail,
+        )
     else:
         prepared = _prepare_fixture(case_name, examples, add, fail)
 
@@ -387,19 +431,22 @@ def _prepare_fixture(
 
 def _prepare_real(
     case_name: str,
-    materials_root: Path,
+    case_root: Path,
     case_dir: Path,
     clock: Clock,
     allocator: IdAllocator,
     add,
     fail,
 ) -> tuple[EvidenceSnapshot, str] | None:
-    """真实路径：受控导入 → 解析 → 证据整理。"""
-    case_root = materials_root / case_name
+    """真实路径：受控导入 → 解析 → 证据整理。
+
+    ``case_root`` 是案例来源目录（仓库预置或外部指定）。它**只被读取**：本函数
+    绝不写入、更不删除它，避免把用户自己的案例目录当成产物目录清掉。
+    """
     if not case_root.is_dir():
         fail(
             "import_materials", REAL, MEMBER_THREE,
-            FileNotFoundError(f"演示材料目录不存在：{case_root}"),
+            FileNotFoundError(f"案例目录不存在：{case_root}"),
         )
         return None
 
@@ -418,9 +465,9 @@ def _prepare_real(
         fail("import_materials", REAL, MEMBER_THREE, exc)
         return None
 
-    # case_dir 是本次运行的输出目录；先清空，保证材料导入不会撞上上一轮的产物
-    if case_dir.exists():
-        shutil.rmtree(case_dir)
+    # case_dir 是**本次运行专属**的产物目录（<output>/<案例>/runs/<run_id>）。
+    # 只清空这一个子目录，绝不触碰案例来源目录或其它历史运行——`_prepare_run_dir`
+    # 已经保证这里不会覆盖一份已完成的运行。
     store = MaterialStore(case_dir / "materials")
 
     try:
@@ -489,6 +536,41 @@ def _build_rule_pack(snapshot: EvidenceSnapshot) -> RulePack:
         sm3=rule_pack_sm3(rule_set),
         rule_ids=list(rule_set.rules_for_version(snapshot.rule_version)),
     )
+
+
+def _default_run_id(clock: Clock) -> str:
+    """缺省运行标识：本次执行时钟的紧凑 UTC 时间戳。
+
+    用执行时钟而不是固定值，所以每次运行落在自己的目录里；同一 ``--now``
+    会得到同一个运行标识，这正是「相同输入得到相同产物」想要的行为。
+    """
+    return clock().strftime("%Y%m%dT%H%M%SZ")
+
+
+def _safe_parts(name: str) -> list[str]:
+    """把名字按两种分隔符拆开，用于判断它是不是安全的单层目录名。"""
+    return PurePosixPath(PureWindowsPath(name).name).parts
+
+
+def _prepare_run_dir(case_dir: Path) -> None:
+    """准备本次运行的产物目录。
+
+    语义边界很明确：
+
+    * **不同运行标识 = 不同目录**。``run_id`` 缺省取本次执行时钟，所以每次运行
+      落在自己的目录里，新运行不会覆盖旧报告或证据包。
+    * **同一运行标识 = 同一次运行**，允许幂等重跑并原地重建。这正是
+      「相同输入 + 固定核查时间 → 相同产物」要的行为：``--now`` 固定时重复执行
+      会得到同一个目录与同一份结果，而不是各自堆一份。
+
+    清理范围仅限这一个 ``runs/<run_id>/`` 子目录，**绝不触碰案例来源目录**，
+    也绝不触碰同级的历史运行。
+    """
+    if case_dir.exists():
+        if not case_dir.is_dir():
+            raise ValueError(f"运行目录路径已被非目录占用：{case_dir}")
+        shutil.rmtree(case_dir)
+    case_dir.mkdir(parents=True)
 
 
 def _import_materials(
@@ -707,7 +789,7 @@ def _finalize(
         failure_reason=failure_reason,
     )
     case_dir.mkdir(parents=True, exist_ok=True)
-    record_path = case_dir / "run-record.json"
+    record_path = case_dir / RUN_RECORD_NAME
     record_path.write_text(
         json.dumps(record.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -810,10 +892,14 @@ def run_all(
     output_root: Path | None = None,
     examples_dir: Path | None = None,
     materials_dir: Path | None = None,
+    run_id: str | None = None,
     now: datetime | None = None,
     mode: str = MODE_FIXTURE,
 ) -> list[RunRecord]:
-    """按固定顺序跑该模式下的全部样例，各自使用全新的 IdAllocator，保证结果可复现。"""
+    """按固定顺序跑该模式下的全部样例，各自使用全新的 IdAllocator，保证结果可复现。
+
+    每个样例用自己的 ``run_id``（缺省取该样例的执行时钟），所以样例之间不会互相覆盖。
+    """
     case_names = REAL_CASES if mode == MODE_REAL else CONTRACT_CASES
     return [
         run_case(
@@ -821,6 +907,7 @@ def run_all(
             output_root=output_root,
             examples_dir=examples_dir,
             materials_dir=materials_dir,
+            run_id=run_id,
             now=now,
             id_allocator=IdAllocator(),
             mode=mode,

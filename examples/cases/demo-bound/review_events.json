@@ -1,0 +1,9 @@
+[
+  {
+    "action": "CONFIRM_BINDING",
+    "target_predicate": "service_uses_certificate",
+    "confirmed_asset_id": "WEB-01",
+    "actor_id": "reviewer-01",
+    "reason": "现场确认 WEB-01 的 nginx 使用该证书"
+  }
+]

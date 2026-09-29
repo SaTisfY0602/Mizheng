@@ -11,7 +11,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 Digest = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 FactValue = str | int | bool | list[str]
-SchemaVersion = Literal["0.2.0-mvp"]
+
+#: 共享契约版本。0.2.1-mvp 相对 0.2.0-mvp 的**唯一**变更：``BundleManifest``
+#: 新增必填字段 ``rule_sm3``（导出时真实使用的规则包 SM3）。见协作规范 §7。
+SCHEMA_VERSION = "0.2.1-mvp"
+SchemaVersion = Literal["0.2.1-mvp"]
 
 
 class ContractModel(BaseModel):
@@ -97,7 +101,7 @@ class Scope(ContractModel):
 
 
 class Artifact(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     id: str
     project_id: str
     kind: ArtifactKind
@@ -134,7 +138,7 @@ class SourceAnchor(ContractModel):
 
 
 class CandidateFact(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     id: str
     artifact_id: str
     anchor: SourceAnchor
@@ -152,7 +156,7 @@ class CandidateFact(ContractModel):
 
 
 class AdmittedFact(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     id: str
     candidate_id: str
     artifact_id: str
@@ -176,7 +180,7 @@ class AdmittedFact(ContractModel):
 
 
 class Gap(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     id: str
     target_condition: str
     reason_code: str
@@ -185,7 +189,7 @@ class Gap(ContractModel):
 
 
 class ReviewEvent(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     id: str
     project_id: str
     previous_snapshot_id: str
@@ -214,7 +218,7 @@ class ErrorItem(ContractModel):
 
 
 class ParseRequest(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     artifact: Artifact
     scope: Scope
     parser_version: str
@@ -227,7 +231,7 @@ class ParseRequest(ContractModel):
 
 
 class ParseResult(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     artifact_id: str
     status: ParseStatus
     coverage: Literal["COMPLETE", "PARTIAL", "UNKNOWN"]
@@ -244,7 +248,7 @@ class ParseResult(ContractModel):
 
 
 class EvidenceSnapshot(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     id: str
     project_id: str
     evaluation_time: datetime
@@ -297,7 +301,7 @@ class EvidenceSnapshot(ContractModel):
 
 
 class Decision(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     id: str
     snapshot_id: str
     rule_id: str
@@ -332,7 +336,7 @@ class Decision(ContractModel):
 
 
 class RulePack(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     id: str
     version: str
     sm3: Digest
@@ -340,7 +344,7 @@ class RulePack(ContractModel):
 
 
 class ReportArtifact(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     id: str
     snapshot_id: str
     decision_ids: list[str]
@@ -351,10 +355,14 @@ class ReportArtifact(ContractModel):
 
 
 class BundleManifest(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     id: str
     snapshot_id: str
     rule_version: str
+    #: 导出这份包时**真实使用**的规则包内容摘要（对规则数据文件按名排序求 SM3）。
+    #: 核验端据此判断「当前的规则实现」是否仍是产出该包时的那一套；不一致即拒绝
+    #: 重放，而不是拿占位摘要冒充「规则已验证」。
+    rule_sm3: Digest
     decision_ids: list[str]
     report_id: str
     files: dict[str, Digest]
@@ -377,7 +385,7 @@ class BundleManifest(ContractModel):
 
 
 class VerifyResult(ContractModel):
-    schema_version: SchemaVersion = "0.2.0-mvp"
+    schema_version: SchemaVersion = SCHEMA_VERSION
     bundle_id: str
     integrity_status: CheckStatus
     replay_status: CheckStatus
